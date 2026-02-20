@@ -2,6 +2,12 @@
 
 MusicPlay is a web player for local music. Listen to all the songs of your library from your browser, without uploading anything to an external server.
 
+
+https://github.com/user-attachments/assets/7b23e4c3-b424-4bdd-b505-3af0088f5ee0
+
+
+
+
 ## Features: 
 
 - Group your library by album, artists, album artists or tracks;
