@@ -1,0 +1,371 @@
+:root {
+  --background: #212121;
+  --text: #fafafa;
+  --secondtext: #c8c8c8;
+  --thirdtext: #888888;
+  --card: #414141;
+  --cardtransparent: #4141415e;
+  --secondcard: #717171;
+  --accent: #468085;
+  --font: "Work Sans", sans-serif;
+  --backgroundimgfilter: blur(32px) brightness(30%);
+  --boxshadow: #ffffff22;
+  --imgboxshadowcode: -3px 2px 15px 9px;
+}
+
+* {
+  font-family: var(--font);
+}
+
+body {
+  padding: 10px;
+  background-color: var(--background);
+  color: var(--text);
+  font-family: var(--font);
+}
+
+.flex {
+  display: flex;
+}
+
+.hcenter {
+  align-items: center;
+}
+
+.gap {
+  gap: 10px;
+}
+
+.wrap {
+  flex-wrap: wrap;
+}
+
+.wcenter {
+  justify-content: center;
+}
+
+.wrap>* {
+  flex: 1
+}
+
+
+.emptyButton {
+  appearance: none;
+  background-color: transparent;
+  border: 0px;
+  display: block;
+  color: var(--text);
+  transition: border 0.2s ease-in-out;
+  height: 100%;
+}
+
+.maxHeight {
+  height: 100%;
+  height: -webkit-fill-available;
+  height: -moz-available;
+}
+
+.maxWidth,
+input:not([type=range]),
+textarea,
+select,
+.btn {
+  width: 100%;
+  width: -webkit-fill-available;
+  width: -moz-available;
+  max-width: 100%;
+  max-width: -webkit-fill-available;
+  max-width: -moz-available;
+}
+
+.emptyButton:hover {
+  cursor: pointer;
+}
+
+.overflow {
+  overflow-x: hidden;
+}
+
+.overflow>* {
+  white-space: nowrap;
+  margin: 0;
+}
+
+span,
+p,
+label {
+  font-size: 14px;
+}
+
+.opacity {
+  transition: opacity 0.2s ease-in-out;
+  opacity: 0;
+}
+
+.mainBodyHover {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: calc(100vw - 20px);
+  height: calc(100vh - 20px);
+  overflow: auto;
+  padding: 10px;
+  z-index: 1
+}
+
+.circularButton,
+.miniDialog {
+  border: 1px solid var(--text);
+  padding: 5px;
+  backdrop-filter: blur(8px) brightness(80%);
+}
+
+.circularButton {
+  border-radius: 50%;
+  display: flex;
+}
+
+.multiCircularButton {
+  border-radius: 18px;
+  width: fit-content;
+  height: unset;
+  min-height: 26px;
+  overflow-x: hidden;
+}
+
+.card {
+  background-color: var(--card);
+  padding: 10px;
+  border-radius: 12px;
+}
+
+.secondaryMetadata {
+  color: var(--secondtext);
+  font-size: 12px
+}
+
+input:not([type=range]),
+select,
+textarea,
+.btn {
+  padding: 10px;
+  background-color: var(--card);
+  border: 1px solid var(--text);
+  border-radius: 12px;
+  color: var(--text);
+  font-family: var(--font);
+}
+
+.btn:hover, select:hover, input:hover, .hover:hover {
+  cursor: pointer;
+}
+
+textarea {
+  height: 25vh;
+}
+
+input[type=color] {
+  height: 40px;
+}
+
+input[type=checkbox] {
+  width: 60px;
+  height: 18px;
+  min-width: 60px;
+  min-height: 18px;
+  border-radius: 12px;
+  border: 1px solid var(--text);
+  background-color: var(--card);
+  appearance: none;
+  position: relative;
+}
+input[type=checkbox]::before {
+  content: "";
+  border-radius: 50%;
+  background-color: var(--text);
+  width: 14px;
+  height: 14px;
+  top: 3px;
+  left: 3px;
+  position: absolute;
+  transition: left 0.2s ease-in-out;
+}
+input[type=checkbox]:checked {
+  background-color: var(--accent);
+}
+input[type=checkbox]:checked::before {
+  left: 41px;
+}
+
+.dialog .multiCircularButton, .dialog.circularButtonContainer {
+  left: 100%;
+  position: sticky;
+  top: 15px;
+}
+
+img {
+  object-fit: cover;
+}
+
+.backgroundImage,
+.backgroundImage img {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1;
+}
+
+.backgroundImage img {
+  filter: var(--backgroundimgfilter);
+  object-fit: cover;
+}
+
+.lyricsAnimation {
+  background-image: linear-gradient(90deg, var(--thirdtext) 50%, var(--text) 50%);
+  background-position: 100%;
+  background-size: 200% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent !important;
+}
+
+.doneItem {
+  color: var(--secondtext);
+  font-size: 24px;
+}
+
+.currentLine {
+  font-size: 48px;
+  font-weight: 600;
+}
+
+.currentLine:not(.currentLineColor) {
+  color: var(--thirdtext);
+}
+
+.currentLineColor {
+  color: var(--text);
+}
+
+.currentLineParent {
+  margin-top: 50px;
+}
+
+.imgBoxShadow {
+  box-shadow: var(--imgboxshadowcode) var(--boxshadow);
+  transition: box-shadow 0.8s ease-in-out;
+  animation: boxShadowAnimation 0.8s ease-in-out;
+}
+
+@keyframes boxShadowAnimation {
+  from {
+    box-shadow: none
+  }
+
+  to {
+    box-shadow: var(--imgboxshadowcode) var(--boxshadow)
+  }
+}
+
+.mainImageSize {
+  width: min(40vh, calc(90vw - 25px));
+  height: min(40vh, calc(90vw - 25px));
+}
+
+.miniDialog {
+  background-color: var(--cardtransparent);
+  width: fit-content;
+  border-radius: 12px;
+  z-index: 1;
+}
+
+.dynamicHeight {
+  max-height: calc(100vh - 100px);
+}
+
+@media (max-width: 800px) {
+  .dynamicHeight {
+    margin-top: 45px;
+  }
+}
+
+a {
+  color: var(--text);
+}
+
+.icon {
+  color: var(--text);
+}
+
+@keyframes disabledAnimation {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+button:disabled {
+  animation: disabledAnimation 1s infinite ease-in-out;
+}
+
+.trackWrap > * {
+        flex: 1 0 400px;
+    }
+
+input[type=range] {
+  --currentsize: 1px;
+  background-color: var(--thirdtext);
+  appearance: none;
+  border-radius: 12px;
+  height: 15px;
+  padding: 0px;
+  margin: 0px;
+  transition: 0.2s ease-in-out;
+  position: relative;
+  overflow: hidden;
+  display: block;
+}
+.slider::before {
+  appearance: none;
+  position: absolute;
+  height: 100%;
+  width: var(--currentsize);
+  background-color: var(--secondtext);
+  content: "";
+  top: 0px;
+  left: 0px;
+  border-top-left-radius: 12px;
+  border-bottom-left-radius: 12px;
+  interpolate-size: allow-keywords;
+  z-index: 1;
+  pointer-events: none;
+}
+.slider {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  display: block;
+  border-radius: 12px;
+}
+input[type=range]:hover {
+  height: 25px;
+}
+.slider:has(input[type=range]:hover)::before {
+    background-color: var(--text);
+}
+
+input[type=range]::-webkit-slider-thumb {
+  appearance: none;
+}
+
+input[type=range]::-moz-range-thumb {
+  appearance: none;
+  opacity: 0;
+}
