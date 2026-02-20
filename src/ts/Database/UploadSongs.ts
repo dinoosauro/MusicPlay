@@ -27,7 +27,8 @@ declare global {
             id?: string,
             mode?: "read" | "readwrite",
             startIn?: string
-        }) => Promise<FileSystemDirectoryHandle>
+        }) => Promise<FileSystemDirectoryHandle>,
+        musicPlayerVersion: string
     }
     interface FileSystemHandle {
         requestPermission: ({ mode }: { mode: "read" | "write" | "readwrite" }) => Promise<string>

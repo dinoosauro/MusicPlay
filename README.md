@@ -2,6 +2,8 @@
 
 MusicPlay is a web player for local music. Listen to all the songs of your library from your browser, without uploading anything to an external server.
 
+Try it: https://dinoosauro.github.io/MusicPlay/
+
 
 https://github.com/user-attachments/assets/7b23e4c3-b424-4bdd-b505-3af0088f5ee0
 
@@ -18,7 +20,7 @@ https://github.com/user-attachments/assets/7b23e4c3-b424-4bdd-b505-3af0088f5ee0
 - Set a sleep timer;
 - And more.
 
-## Usage
+## Usage:
 
 The user will be first prompted to upload some files, that will be saved **only locally** inside the browser's database. If a Chromium-based browser is used, the files will not be copied, saving lots of storage. 
 
@@ -80,11 +82,11 @@ If you've set the custom order, you can change it in two ways:
 - The first one is by clicking on the three dots, and manually moving a song up or down;
 - The second one is by dragging and dropping the song.
 
-## Customization
+## Customization:
 
 From the "Settings" button, you can change the behavior of the application in many ways. You can, for example, decide to automatically fetch lyrics if they're missing, or you can change the color or the font used by the application.
 
-## Privacy
+## Privacy:
 
 
 This application can work completely offline. The application connects to external servers only to get the default font and to get lyrics if the user wants so.

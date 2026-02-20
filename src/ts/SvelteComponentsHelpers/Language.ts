@@ -226,7 +226,10 @@ const availableTranslations = new Map<string, TranslationProps>([
     ["Export playlist", {it: "Esporta playlist"}],
     ["Playlists successfully imported", {it: "Playlist importate con successo"}],
     ["Import playlist", {it: "Importa playlist"}],
-    ["Close the dropdown list", {it: "Chiudi l'elenco a discesa"}]
+    ["Close the dropdown list", {it: "Chiudi l'elenco a discesa"}],
+    ["View on GitHub", {it: "Vedi su GitHub"}],
+    ["version", {it: "versione"}],
+    ["Information about MusicPlay", {it: "Informazioni su MusicPlay"}]
 ]);
 
 /**

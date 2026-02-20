@@ -14,12 +14,12 @@
     <script>
       if (typeof crypto.randomUUID === "undefined") crypto.randomUUID = () => Math.random().toString();  
       if (window.location.hash && window.location.hash !== "#restoreTheme") history.replaceState("", "", "./");
-      const musicPlayerVersion = "1.0.0";
+      window.musicPlayerVersion = "1.0.0";
       (async () => {
         const result = await navigator.serviceWorker.register('./service-worker.js');
         if (navigator.onLine) await result.update();
       })();
-      fetch("./updatecode", { cache: "no-store" }).then((res) => res.text().then((text) => { if (text.replace("\n", "") !== musicPlayerVersion) if (confirm(`There's a new version of MusicPlay. Do you want to update? [${musicPlayerVersion} --> ${text.replace("\n", "")}]`)) { caches.delete("musicplayer-cache"); location.reload(true); } }).catch((e) => { console.error(e) })).catch((e) => console.error(e)); // Check if the application code is the same as the current application version and, if not, ask the user to update
+      fetch("./updatecode", { cache: "no-store" }).then((res) => res.text().then((text) => { if (text.replace("\n", "") !== window.musicPlayerVersion) if (confirm(`There's a new version of MusicPlay. Do you want to update? [${window.musicPlayerVersion} --> ${text.replace("\n", "")}]`)) { caches.delete("musicplayer-cache"); location.reload(true); } }).catch((e) => { console.error(e) })).catch((e) => console.error(e)); // Check if the application code is the same as the current application version and, if not, ask the user to update
 
     </script>
     <script type="module" src="/src/main.ts"></script>

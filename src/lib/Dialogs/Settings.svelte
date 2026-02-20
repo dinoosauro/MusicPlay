@@ -233,6 +233,11 @@
     SOFTWARE.
             </p>
         </Card>
+    </Card><br>
+    <Card secondCard={true}>
+        <h4>{lang("Information about MusicPlay")}:</h4>
+        <p>MusicPlay {lang("version")} {window.musicPlayerVersion}</p>
+        <a href="https://github.com/dinoosauro/MusicPlay" target="_blank">{lang("View on GitHub")}</a>
     </Card>
 </Dialog>
 
