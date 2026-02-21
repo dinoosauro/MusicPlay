@@ -229,7 +229,13 @@ const availableTranslations = new Map<string, TranslationProps>([
     ["Close the dropdown list", {it: "Chiudi l'elenco a discesa"}],
     ["View on GitHub", {it: "Vedi su GitHub"}],
     ["version", {it: "versione"}],
-    ["Information about MusicPlay", {it: "Informazioni su MusicPlay"}]
+    ["Information about MusicPlay", {it: "Informazioni su MusicPlay"}],
+    ["Do you want to merge all the edited metadata with the output file? This will", {it: "Vuoi unire tutti i metadati modificati con il file di destinazione? Questo"}],
+    ["require downloading some libraries (~ 16MB) and will", {it: "richiederà il download di alcune librerie (~ 16MB) e"}],
+    ["use more memory. If you don't want to do so, click \"No\" and the original file you've uploaded will be downloaded", {it: "Utilizzerà più memoria. Se non vuoi unirli, clicca \"No\" per scaricare il file originale che hai caricato"}],
+    ["Export synced lyrics", {it: "Esporta testo sincronizzato"}],
+    ["LRC file", {it: "File LRC"}],
+    ["TTML file", {it: "File TTML"}]
 ]);
 
 /**

@@ -1,0 +1,191 @@
+﻿@inject IJSRuntime JS;
+@using System;
+@using System.Reflection.Metadata
+@using System.Reflection
+@using System.Text.RegularExpressions
+@using System.Text
+
+<h2>Adding metadata...</h2>
+<p>This iFrame is used only to add the custom metadata using TagLib Sharp. Download will automatically start.</p>
+
+@code {
+
+    /// <summary>
+    /// Class used so that we can call JavaScript functions from static classes.
+    /// This is needed since, to call a C# function from JavaScript, the function must be static.
+    /// </summary>
+
+    public static class JsInteropHelper
+    {
+        private static IJSRuntime _jsRuntime;
+
+        public static void Initialize(IJSRuntime jsRuntime)
+        {
+            _jsRuntime = jsRuntime;
+        }
+
+        public static async Task InvokeVoidAsync(string functionName, params object[] args)
+        {
+            await _jsRuntime.InvokeVoidAsync(functionName, args);
+        }
+    }
+
+    /// <summary>
+    /// The metadataDB object passed from the main MusicPlay application
+    /// </summary>
+    public class metadataObject {
+        public string? artist { get; set; }
+        public string? albumSort { get; set; }
+        public string? artistSort { get; set; }
+        public string? albumArtist { get; set; }
+        private string? albumArtistSort { get; set; }
+        public double duration { get; set; }
+        public int? track { get; set; }
+        public int? totalTracks { get; set; }
+        public int? disk { get; set; }
+        public int? diskCount { get; set; }
+        public string? album { get; set; }
+        public string? genre { get; set; }
+        public int? year { get; set; }
+        public string? title { get; set; }
+        public string? embeddedLyrics { get; set; }
+        public object? syncedLyrics { get; set; }
+        public string? titleSort { get; set; }
+        public string? composer { get; set; }
+        public string? composerSort { get; set; }
+        public string name { get; set; }
+        public string? directoryId { get; set; }
+        public bool? hasBothDirectoryIdAndFileHandle { get; set; }
+    }
+
+    /// <summary>
+    /// A dictionary, with the metadataObj key as a key, and the TagLib.Tag key as a value.
+    /// </summary>
+    private static Dictionary<string, string> dictionary = new Dictionary<string, string>
+    {
+    { "artist", "Performers" },
+    { "albumSort", "AlbumSort" },
+    { "artistSort", "PerformersSort" },
+    { "albumArtist", "AlbumArtists" },
+    { "albumArtistSort", "AlbumArtistsSort" },
+    { "track", "Track" },
+    { "totalTracks", "TrackCount" },
+    { "disk", "Disc" },
+    { "diskCount", "DiscCount" },
+    { "album", "Album" },
+    { "genre", "Genres" },
+    { "year", "Year" },
+    { "title", "Title" },
+    { "embeddedLyrics", "Lyrics" },
+    { "titleSort", "TitleSort" },
+    { "composer", "Composers" },
+    { "composerSort", "ComposersSort" },
+    };
+
+    /// <summary>
+    /// Abstraction for TagLib-Sharp so that it can read files directly from a MemoryStream. Borrowed from another my project: https://github.com/dinoosauro/taglibsharp-web/blob/442754d134ea5b042c413fadb6cdb2d92f61d7d3/StreamFileAbstraction.cs
+    /// </summary>
+    public class StreamFileAbstraction(string name, Stream stream) : TagLib.File.IFileAbstraction
+    {
+        private readonly Stream Stream = stream;
+
+        public string Name { get; } = name;
+
+        public Stream ReadStream => Stream;
+
+        public Stream WriteStream => Stream;
+
+        public void CloseStream(Stream stream)
+        {
+            // Nothing must be done to the original stream
+        }
+    }
+
+    /// <summary>
+    /// Update the metadata of the passed audio file
+    /// </summary>
+    /// <param name="bytes">the Uint8Array of the audio file to update</param>
+    /// <param name="metadata">the metadataDb entry with all the metadata</param>
+    /// <param name="albumArt">an optional Uint8Array, that'll be the new album art of the file</param>
+    [JSInvokable]
+    public static async void AddMetadata(byte[] bytes, metadataObject metadata, byte[]? albumArt) {
+        string realName = metadata.name[(metadata.name.LastIndexOf("/") + 1)..]; // Remove possible relative paths
+        MemoryStream stream = new MemoryStream();
+        await stream.WriteAsync(bytes);
+        TagLib.File file = TagLib.File.Create(new StreamFileAbstraction(realName, stream));
+        foreach (KeyValuePair<string, string> property in dictionary) { // Update all the properties 
+            string? newMetadataValue = metadata.GetType().GetProperty(property.Key)?.GetValue(metadata)?.ToString();
+            if (newMetadataValue == null) continue;
+            SetCurrentValue(newMetadataValue, file.Tag, property.Value);
+        }
+        if (albumArt != null) { // Add passed album art
+            file.Tag.Pictures = [new TagLib.Picture{
+                Type = TagLib.PictureType.FrontCover,
+                Data = albumArt
+            }];
+        }
+        file.Save();
+        stream.Position = 0; // Important: without this, the downloaded file would be empty
+        DotNetStreamReference reference = new DotNetStreamReference(stream);
+        await JsInteropHelper.InvokeVoidAsync("downloadFile", [reference, realName]);
+        file.Dispose();
+        stream.Close();
+        stream.Dispose();
+        reference.Dispose();
+    }
+
+        /// <summary>
+        /// Set a Tag to a TagLib.Tag.
+        /// Borrowed from one of my other projects (TagLibSharp-Web)
+        /// </summary>
+        /// <param name="value">The value of the tag</param>
+        /// <param name="destinationTag">The TagLib.Tag where the new value should be added</param>
+        /// <param name="selectedItem">The Tag to update</param>
+        private static void SetCurrentValue(string? value, TagLib.Tag destinationTag, string TagLibProperty)
+        {
+            PropertyInfo propertyInfo = destinationTag.GetType().GetProperty(TagLibProperty);
+            if (propertyInfo != null && propertyInfo.CanWrite)
+            {
+                object? getValue = propertyInfo.GetValue(destinationTag, null);
+                switch (getValue == null ? "" : getValue.GetType().ToString()) // Convert it to the right object for TagLib Sharp
+                {
+                    case "System.String[]":
+                        propertyInfo.SetValue(destinationTag, value == null ? null : new string[] { value }, null);
+                        break;
+                    case "System.UInt32":
+                        uint tempInt;
+                        propertyInfo.SetValue(destinationTag, uint.TryParse(value, out tempInt) ? tempInt : null, null);
+                        break;
+                    default:
+                        propertyInfo.SetValue(destinationTag, value, null);
+                        break;
+                }
+            }
+        }
+        
+}
+
+<script>
+    window.addEventListener("message", async (msg) => {
+        if (msg.data.type === "changeMetadata") {
+            await DotNet.invokeMethodAsync("MusicPlay-SyncMetadata", "AddMetadata", msg.data.buffer, msg.data.metadata, msg.data.image ?? null);
+            msg.data = {};
+        }
+    })
+    window.parent.postMessage({ready: true}, "*"); // Tell the main window the website is ready
+    async function downloadFile(stream, name) {
+        let buffer = await stream.arrayBuffer();
+        let blob = new Blob([buffer]);
+        const a = Object.assign(document.createElement("a"), {
+            href: URL.createObjectURL(blob),
+            target: "_blank",
+            download: name
+        });
+        a.click();
+        setTimeout(() => {
+            buffer = null;
+            blob = null;
+            URL.revokeObjectURL(a.href);
+        }, 1000)
+    }
+</script>

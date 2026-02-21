@@ -71,7 +71,7 @@ If the application hasn't correctly fetched some metadata, you can edit them in 
    * Note: if you click on the album art while you're seeing a playlist, you'll be able to change the playlist name, or upload a custom playlist thumbnail.
 - The second one is by using the "Edit metadata" button from the dropdown list that is displayed when the three dots at the right of the song name are clicked. In this case, you'll edit the metadata of that single song.
 
-Note that the application won't apply the new metadata on the file if you download it from the "Save file" button.
+If you later plan to download again the uploaded audio file, you'll be able to choose if you want to apply the edits in the audio file or not.
 
 ### Playlists
 
@@ -88,5 +88,12 @@ From the "Settings" button, you can change the behavior of the application in ma
 
 ## Privacy:
 
-
 This application can work completely offline. The application connects to external servers only to get the default font and to get lyrics if the user wants so.
+
+## Building:
+
+In most cases, to use MusicPlay it's enough installing the required dependencies with `npm i`. 
+
+If you want also to set up the funcionality that permits to merge the edited metadata in the output audio file when downloading it, you'll need also to download the .NET Runtime and then either build the Blazor WebAssembly project or to start a second server with that webpage. You can find this project in the [MusicPlay-SyncMetadata](./MusicPlay-SyncMetadata/) folder of this project.
+
+You might also need to change the URL of the Blazor WebAssembly page from the [UpdateMetadataOnOutputFile.ts](./src/ts/Database/UpdateMetadataOnOutputFile.ts) file (the `iFrameSrc` property).

@@ -1,7 +1,7 @@
 <script lang="ts">
     import type { PopupScalingInfo } from "../../ts/Animations/AnimationTypes";
     import AudioManager from "../../ts/Player/AudioManager";
-    import type { DatabaseContainer } from "../../ts/Database/DatabaseInterfaces";
+    import type { albumArtDB, DatabaseContainer, metadataDB } from "../../ts/Database/DatabaseInterfaces";
     import DeleteFiles from "../../ts/Database/DeleteFiles";
     import IndexedDatabase from "../../ts/Database/IndexedDatabase";
     import type { MetadataSource, MetadataSourcePlaylist, PlaylistContainer } from "../../ts/Player/PlayerInterfaces";
@@ -9,7 +9,23 @@
     import ViewerItemDropdownOptions from "./ViewerItemDropdownOptions.svelte";
     import { lang } from "../../ts/SvelteComponentsHelpers/Language";
     import GetAudioFile from "../../ts/DataFetcher/GetAudioFile";
+    import UpdateMetadataOnOutputFile from "../../ts/Database/UpdateMetadataOnOutputFile";
+    import GetAlbumArtId from "../../ts/DataFetcher/GetAlbumArtId";
     let {songs, position, editMetadataCallback, databases, playlistItems, playlistId, showStatsCallback}: {songs: (MetadataSource | MetadataSourcePlaylist)[], position: number, editMetadataCallback: () => void, databases: DatabaseContainer, playlistItems?: PlaylistContainer[], playlistId?: string, showStatsCallback: () => void} = $props();
+
+    /**
+     * Convert the milliseconds to either the LRC or TTML timestamp
+     * @param ms the milliseconds to convert
+     * @param ttmlMode if the output timestamp should be TTML ready
+     */
+    function convertMsToTimestamp(ms: number, ttmlMode?: boolean) {
+        let minutes = Math.floor(ms / 1000 / 60);
+        ms -= (minutes * 1000 * 60);
+        let seconds = Math.floor(ms / 1000);
+        ms -= (seconds * 1000);
+        let cents = ttmlMode ? ms : Math.floor(ms / 10);
+        return `${ttmlMode && minutes === 0 ? "" : minutes < 10 && !ttmlMode ? `0${minutes}:` : `${minutes}:`}${seconds < 10 && (!ttmlMode || minutes > 0) ? `0${seconds}` : seconds}.${(cents < 10 || (cents < 100 && ttmlMode)) ? `0${ttmlMode && cents < 10 ? "0" : ""}${cents}` : cents}`;
+    }
 </script>
 
 <DropdownButtonShow
@@ -21,6 +37,7 @@
             playlistSrc={playlistItems}
             playlistDb={databases.playlistDb}
             trackId={songs[position].trackId}
+            hasSyncedLyrics={songs[position].metadata.syncedLyrics.length !== 0}
             showPlaylistUpButton={playlistItems && position !== 0}
             showPlaylistDownButton={playlistItems && songs.length !== (position + 1)}
             {animationInfo}
@@ -97,6 +114,44 @@
                     }
                     case "downloadSong": {
                         const audio = await GetAudioFile({songDb: databases.songDb, songId: songs[position].trackId, metadataDb: databases.metadataDb});
+                        if (confirm(`${lang("Do you want to merge all the edited metadata with the output file? This will")}${localStorage.getItem("MusicPlayer-CachedWebAssembly") === "a" ? "" : lang("require downloading some libraries (~ 16MB) and will")} ${lang("use more memory. If you don't want to do so, click \"No\" and the original file you've uploaded will be downloaded")}.`)) {
+                            if (!UpdateMetadataOnOutputFile.isiFrameReady) { // We need to load the iFrame, and wait for the ready message
+                                await new Promise<void>(res => {
+                                    function waitForReadyMsg(e: MessageEvent) {
+                                        if (e.origin === new URL(UpdateMetadataOnOutputFile.iFrame.src).origin) {
+                                            if (e.data.ready) {
+                                                window.removeEventListener("message", waitForReadyMsg);
+                                                UpdateMetadataOnOutputFile.isiFrameReady = true;
+                                                localStorage.setItem("MusicPlayer-CachedWebAssembly", "a")
+                                                res();
+                                            }
+                                        }
+                                    }
+                                    window.addEventListener("message", waitForReadyMsg);
+                                    document.body.append(UpdateMetadataOnOutputFile.iFrame);
+                                    UpdateMetadataOnOutputFile.iFrame.src = UpdateMetadataOnOutputFile.iFrameSrc
+                                })
+                            }
+                            const albumArt = await IndexedDatabase.get({ // We'll load the album art directly from the database, without using the normal `GetAlbumArt` function, so that we'll avoid adding the fallback album art to the output file
+                                db: databases.albumArtDb,
+                                request: "albumArt",
+                                query: GetAlbumArtId({
+                                    albumAuthor: songs[position].metadata.albumArtist,
+                                    year: songs[position].metadata.year,
+                                    albumName: songs[position].metadata.album
+                                })
+                            });
+                            const metadata = JSON.parse(JSON.stringify(songs[position].metadata)) as metadataDB;
+                            if (metadata.syncedLyrics.length !== 0 && metadata.embeddedLyrics.trim() === "") metadata.embeddedLyrics = metadata.syncedLyrics.map(i => i.text).join("\n"); // Add at least the embedded lyrics in case the application has fetched synced lyrics
+                            UpdateMetadataOnOutputFile.iFrame.contentWindow?.postMessage({ // Send the necessary data to the Blazor WebAssembly iFrame
+                                type: "changeMetadata",
+                                buffer: new Uint8Array(await audio.arrayBuffer()),
+                                metadata,
+                                albumArt: albumArt ? new Uint8Array(await (albumArt.data as albumArtDB).img.arrayBuffer()) : undefined
+                            }, new URL(UpdateMetadataOnOutputFile.iFrame.src).origin);
+                            return;
+                        }
+                        // Standard download: download the file
                         const a = Object.assign(document.createElement("a"), {
                             href: URL.createObjectURL(audio),
                             target: "_blank",
@@ -106,7 +161,79 @@
                         setTimeout(() => URL.revokeObjectURL(a.href), 5000);
                         break;
                     }
-
+                    case "downloadLyricsLrc": { 
+                        let str = ""; // Let's convert the syncedLyrics object to a LRC file
+                        for (const line of songs[position].metadata.syncedLyrics) {
+                            str += `\n[${convertMsToTimestamp(line.start)}] `;
+                            if (line.words.length > 0) str += line.words.map(word => `<${convertMsToTimestamp(word.start)}>${word.text}`).join(" "); else str += line.text;
+                        }
+                        // And download the file
+                        const outputName = songs[position].metadata.name.substring(songs[position].metadata.name.lastIndexOf("/") + 1);
+                        const a = Object.assign(document.createElement("a"), {
+                            href: URL.createObjectURL(new Blob([str.substring(1)])),
+                            target: "_blank",
+                            download: `${outputName.substring(0, outputName.lastIndexOf("."))}.lrc`
+                        });
+                        a.click();
+                        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+                        break;
+                    }
+                    case "downloadLyricsTtml": {
+                        // TTML syntax is more complex. Apple provides a great reference of the TTML specification: https://help.apple.com/itc/videoaudioassetguide/#/itcd7579a252
+                        const lyricsObj = songs[position].metadata.syncedLyrics;
+                        const tt = document.createElementNS("http://www.w3.org/ns/ttml", "tt");
+                        for (const [key, val] of [["xmlns", "http://www.w3.org/ns/ttml"], ["xmlns:ttm", "http://www.w3.org/ns/ttml#metadata"], ["xml:lang", "en"], ["xmlns:itunes", "http://itunes.apple.com/lyric-ttml-extensions"]])  tt.setAttribute(key, val);
+                        const head = document.createElementNS("http://www.w3.org/ns/ttml", "head");
+                        // We need to add all the singers to the metadata object
+                        const metadata = document.createElementNS("http://www.w3.org/ns/ttml", "metadata");
+                        for (const author of new Set(songs[position].metadata.syncedLyrics.map(i => i.artistNumber))) {
+                            if (typeof author === "undefined") continue;
+                            const ttmAgent = document.createElementNS("http://www.w3.org/ns/ttml", "ttm:agent");
+                            ttmAgent.setAttribute("type", "person");
+                            ttmAgent.setAttribute("xml:id", `v${author + 1}`);
+                            metadata.append(ttmAgent);
+                        }
+                        head.append(metadata);
+                        tt.append(head);
+                        const body = document.createElementNS("http://www.w3.org/ns/ttml", "body");
+                        body.setAttribute("dur", convertMsToTimestamp(Math.floor(songs[position].metadata.duration * 1000), true));
+                        tt.append(body);
+                        // Let's create the div that'll contain all the lyrics
+                        const div = document.createElementNS("http://www.w3.org/ns/ttml", "div");
+                        div.setAttribute("begin", convertMsToTimestamp(lyricsObj[0].start, true));
+                        div.setAttribute("end", convertMsToTimestamp(lyricsObj[lyricsObj.length - 1].end ?? Math.floor(songs[position].metadata.duration * 1000), true));
+                        body.append(div);
+                        for (let i = 0; i < lyricsObj.length; i++) {
+                            const p = document.createElementNS("http://www.w3.org/ns/ttml", "p");
+                            if (lyricsObj[i].words.length !== 0) { // Word-by-word lyrics. We need to create a span for each word.
+                                for (let j = 0; j < lyricsObj[i].words.length; j++) {
+                                    const span = document.createElementNS("http://www.w3.org/ns/ttml", "span");
+                                    span.setAttribute("begin", convertMsToTimestamp(lyricsObj[i].words[j].start, true));
+                                    span.setAttribute("end", convertMsToTimestamp(lyricsObj[i].words[j].end ?? (j !== lyricsObj[i].words.length - 1 ? lyricsObj[i].words[j + 1].start : i !== lyricsObj.length - 1 ? lyricsObj[i + 1].start : Math.floor(songs[position].metadata.duration * 1000)), true));
+                                    span.textContent = lyricsObj[i].words[j].text;
+                                    p.append(span);
+                                    if (j !== lyricsObj[i].words.length - 1) { // This is not part of the specification. It's just a lame way to add a space between the two spans in the output TTML file (since this node will be replaced)
+                                        const tempSpace = document.createElementNS("http://www.w3.org/ns/ttml", "AddSpaceHere");
+                                        p.append(tempSpace);
+                                    }
+                                }
+                            } else p.textContent = lyricsObj[i].text;
+                            p.setAttribute("begin", convertMsToTimestamp(lyricsObj[i].start, true));
+                            p.setAttribute("end", convertMsToTimestamp(lyricsObj[i].end ?? (i !== lyricsObj.length - 1 ? lyricsObj[i + 1].start : Math.floor(songs[position].metadata.duration * 1000)), true));
+                            if (typeof lyricsObj[i].artistNumber !== "undefined") p.setAttribute("ttm:agent", `v${(lyricsObj[i].artistNumber as number) + 1}`);
+                            div.append(p);
+                        }
+                        // And now le'ts download the file
+                        const outputName = songs[position].metadata.name.substring(songs[position].metadata.name.lastIndexOf("/") + 1);
+                        const a = Object.assign(document.createElement("a"), {
+                            href: URL.createObjectURL(new Blob([tt.outerHTML.replaceAll("<AddSpaceHere></AddSpaceHere>", " ")])),
+                            target: "_blank",
+                            download: `${outputName.substring(0, outputName.lastIndexOf("."))}.ttml`
+                        });
+                        a.click();
+                        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+                        break;
+                    }
                 }
             }}
         ></ViewerItemDropdownOptions>

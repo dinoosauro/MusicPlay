@@ -18,11 +18,13 @@
         playlistSrc,
         showPlaylistUpButton,
         showPlaylistDownButton,
+        hasSyncedLyrics
     }: {
         animationInfo: PopupScalingInfo;
         callback: (item: string) => void;
         playlistDb: IDBDatabase;
         trackId: string;
+        hasSyncedLyrics: boolean
         /**
          * List of all the loaded playlists objects
          */
@@ -161,6 +163,22 @@
                 },
                 categoryItems: []
             },
+            ...(hasSyncedLyrics ? [
+                {
+                    categoryInfo: {
+                        text: lang("Export synced lyrics"),
+                        id: "downloadLyrics",
+                        icon: "mic" as "mic"
+                    },
+                    categoryItems: [{
+                        text: lang("LRC file"),
+                        id: "downloadLyricsLrc"
+                    }, {
+                        text: lang("TTML file"),
+                        id: "downloadLyricsTtml"
+                    }]
+                }
+            ] : []),
             {
                 categoryInfo: {
                     text: lang("View stats"),
