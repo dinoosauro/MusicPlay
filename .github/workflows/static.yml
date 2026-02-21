@@ -38,7 +38,7 @@ jobs:
       - name: Build website
         run: npx vite build
       - name: Build Blazor WebAssembly companion (for metadata editing)
-        run: cd MusicPlay-SyncMetadata && dotnet publish -c Release -o Temp && cd && mv MusicPlay-SyncMetadata/Temp/wwwroot dist/metadata-merger
+        run: cd MusicPlay-SyncMetadata/MusicPlay-SyncMetadata && dotnet publish -c Release -o Temp && cd && mv MusicPlay-SyncMetadata/Temp/wwwroot dist/metadata-merger
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
