@@ -95,7 +95,7 @@
             return i;
         });
     }}><br><br>
-   <div class="flex hcenter gap wrap trackWrap"> 
+   <div class="flex hcenter gap wrap trackWrap" style="align-items: stretch"> 
     {#each itemToShow as [numStr, metadata], i (numStr)}
     {#if renderItems + (10 * Math.max(1, Math.floor(window.innerWidth / 400))) > i}
         <SingleTrackButton {albumArtCache} currentPosition={i} {databases} {metadataObj} {metadata} {handleAlbumArtCache} editMetadataCallback={() => {

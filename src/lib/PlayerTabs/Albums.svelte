@@ -67,7 +67,7 @@
     const val = searchBox.value.trim().toLowerCase();
     itemToShow = val === "" ? metadata : metadata.filter(i => i[1][0].metadata.album.toLowerCase().indexOf(val) !== -1);
 }}><br><br>
-        <div class="flex gap wrap wcenter" >
+        <div class="flex gap wrap wcenter" style="align-items: stretch">
             {#each itemToShow as [albumId, entries], i (albumId)}
                 {#if renderItems + (10 * Math.max(1, Math.floor(window.innerWidth / 300))) > i}
                     <SingleAlbumButton {databases} {albumId} {entries} {updateContent}></SingleAlbumButton>

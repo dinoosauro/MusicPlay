@@ -37,7 +37,8 @@
     })
 </script>
 <button
-    class="emptyButton card maxHeight"
+    class="emptyButton card"
+    style="height: auto;"
     onclick={async () => {
         const albumArt = await GetAlbumArt({
             db: databases?.albumArtDb,

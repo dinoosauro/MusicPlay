@@ -96,10 +96,10 @@
         const val = searchBox.value.trim().toLowerCase();
         itemToShow = val === "" ? playlists : (playlists as PlaylistContainer[]).filter(i => i.data.name.toLowerCase().indexOf(val) !== -1);
     }}><br><br>
-       <div class="flex hcenter gap wrap"> 
+       <div class="flex hcenter gap wrap" style="align-items: stretch"> 
             {#each itemToShow as playlistItem, i (playlistItem.id)}
                 {#if renderItems + (10 * Math.max(1, Math.floor(window.innerWidth / 400))) > i}
-                <button class="emptyButton flex hcenter gap card maxWidth maxHeight" style="display: flex;" onclick={(e) => {
+                <button class="emptyButton flex hcenter gap card maxWidth" style="display: flex; height: auto;" onclick={(e) => {
                     if ((e.target as HTMLElement).getAttribute("data-disableclick") !== null || (e.target as HTMLElement).closest("[data-disableclick]")) return; // Avoid playing the track if the user clicked on the three dots
                     const metadata = getMetadata(playlistItem);
                     if (!metadata || metadata.length === 0) return;

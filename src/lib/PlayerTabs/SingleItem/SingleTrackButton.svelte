@@ -93,7 +93,7 @@
         AudioManager.audioContext.queue = newItem.map(i => {return {...i, queueId: crypto.randomUUID()}});
         AudioManager.audioContext.queuePosition = 0;
         Audio
-    }} class="emptyButton flex hcenter gap card maxWidth maxHeight" out:fade={{duration: 1, delay: 1000}} style="display: flex;">
+    }} class="emptyButton flex hcenter gap card maxWidth" out:fade={{duration: 1, delay: 1000}} style="display: flex; height: auto">
         {#await handleAlbumArtCache(GetAlbumArtId({albumAuthor: albumArtist, year, albumName}), albumName)}
             
         {:then item} 

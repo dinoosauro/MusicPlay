@@ -59,7 +59,7 @@
         const val = searchBox.value.trim().toLowerCase();
         itemToShow = val === "" ? metadata : metadata.filter(i => i[0].toLowerCase().indexOf(val) !== -1);
     }}><br><br>
-    <div class="flex hcenter gap wrap">
+    <div class="flex hcenter gap wrap" style="align-items: stretch">
         {#each itemToShow as [name, entries], i (name)}
             {#if renderItems + (10 * Math.max(1, Math.floor(window.innerWidth / 400))) > i}
             <button onclick={() => {
@@ -70,7 +70,7 @@
                 albumArtImg: imageMap.get(`ArtistImg-${name}`)
             })
 
-            }} class="emptyButton flex hcenter gap card maxWidth maxHeight" style="display: flex">
+            }} class="emptyButton flex hcenter gap card maxWidth" style="display: flex; height: auto;">
                 {#await ArtistImageManager.fetchImage({author: name, artistImageDb: databases.artistImgDb})}
                 {:then src}
                     <!-- svelte-ignore a11y_img_redundant_alt -->
