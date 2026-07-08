@@ -93,7 +93,7 @@
         }
         let [xAxis, yAxis] = [Object.keys(outputObj), Object.values(outputObj)];
         Chart.Chart.getChart(canvas)?.destroy();
-        Chart.Chart.register(Chart.BarController, Chart.BarElement, Chart.CategoryScale, Chart.LinearScale, Chart.Tooltip, Chart.Legend, Chart.PolarAreaController, Chart.DoughnutController, Chart.PieController, Chart.LineController, Chart.ArcElement, Chart.LineElement, Chart.RadialLinearScale);
+        Chart.Chart.register(Chart.BarController, Chart.BarElement, Chart.CategoryScale, Chart.LinearScale, Chart.Tooltip, Chart.Legend, Chart.PolarAreaController, Chart.DoughnutController, Chart.PieController, Chart.LineController, Chart.ArcElement, Chart.LineElement, Chart.RadialLinearScale, Chart.PointElement);
         Chart.defaults.color = getComputedStyle(document.body).getPropertyValue("--text")
         new Chart.Chart(canvas, {
             type: chartType as "bar",
