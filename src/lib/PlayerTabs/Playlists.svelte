@@ -13,7 +13,7 @@
     import AutoRevokeUrl from "../../ts/SvelteComponentsHelpers/AutoRevokeUrl";
     import ShowNewPlaylist from "../../ts/SvelteComponentsHelpers/ShowNewPlaylist";
 
-    let {metadata, databases, updateContent}: {
+    let {metadata, databases, updateContent, passPlaylists}: {
         /**
          * Object that contains all the IndexedDatabases used by the application
          */
@@ -26,14 +26,26 @@
         /**
          * List of all the metadata fetched, if loaded. They should be already sorted by album.
          */
-        metadata?: ([string, MetadataSource[]])[] 
+        metadata?: ([string, MetadataSource[]])[],
+        /**
+         * Function called when all the playlists have been fetched from the database
+         * @param item the array with all the playlists. If the component is destroyed, undefined will be returned.
+         */
+        passPlaylists: (item: PlaylistContainer[] | undefined) => void
     } = $props();
     /**
      * A list of all the playlists that have been created by the user. If undefined, the lists are still being loaded by the application.
      */
     let playlists = $state<PlaylistContainer[] | undefined>(undefined);
-    onMount(async () => {
-        playlists = await GetAllPlaylists(databases.playlistDb);
+    onMount(() => {
+        GetAllPlaylists(databases.playlistDb).then((content) => {
+            playlists = content;
+            passPlaylists(playlists);
+        })
+        return () => {
+            playlists = undefined;
+            passPlaylists(undefined);
+        }
     })
     /**
      * A list of the items that should be shown in the list. It might be filtered.
@@ -92,7 +104,7 @@
     {#if playlists.length === 0}
         <p>{lang("No playlists were found. You can create one by clicking on the three dots at the right of each track")}.</p>
     {:else}
-    <input type="text" bind:this={searchBox} placeholder={lang("Search tracks")} oninput={(e) => {
+    <input type="text" bind:this={searchBox} placeholder={lang("Search playlists")} oninput={(e) => {
         const val = searchBox.value.trim().toLowerCase();
         itemToShow = val === "" ? playlists : (playlists as PlaylistContainer[]).filter(i => i.data.name.toLowerCase().indexOf(val) !== -1);
     }}><br><br>

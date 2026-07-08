@@ -111,7 +111,26 @@ const obj = {
         /**
          * The volume of the currently-playing track, from 0 to 1.
          */
-        volume: 1
+        volume: 1,
+        /**
+         * **If the user is playing tracks from a playlist**, the ID of the selected playlist.
+         */
+        playlistId: null as null | string,
+        /**
+         * **If the user is playing tracks form a playlist**, the position in the playlist array of the track that has been clicked.
+         * 
+         * This entry means that the `queue` and the `originalQueue` arrays have had their entries moved of this value with `queue.unshift(...queue.splice(playlistStartPosition))`
+         */
+        playlistStartPosition: 0,
+        /**
+         * The queueId of the first item in the queue position.
+         * This needs to be stored since the user can move the queue list in the "Queue" view of the fullscreen player, and we need to certainly know the ID of the first element. *It should now be useless since there's the `originalQueue` object, but if it ain't broke don't fix it*
+         */
+        queueIdStart: null as null | string,
+        /**
+         * All the items in the queue. The order of this array won't be changed, even if the user changes the queue position in the Queue view.
+         */
+        originalQueue: [] as MetadataSourceQueue[]
     },
     /**
      * A list of the metadata of all the tracks that have been played

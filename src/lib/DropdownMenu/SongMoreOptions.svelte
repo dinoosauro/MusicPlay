@@ -11,7 +11,9 @@
     import GetAudioFile from "../../ts/DataFetcher/GetAudioFile";
     import UpdateMetadataOnOutputFile from "../../ts/Database/UpdateMetadataOnOutputFile";
     import GetAlbumArtId from "../../ts/DataFetcher/GetAlbumArtId";
-    let {songs, position, editMetadataCallback, databases, playlistItems, playlistId, showStatsCallback}: {songs: (MetadataSource | MetadataSourcePlaylist)[], position: number, editMetadataCallback: () => void, databases: DatabaseContainer, playlistItems?: PlaylistContainer[], playlistId?: string, showStatsCallback: () => void} = $props();
+    import MovePlaylistItem from "../../ts/Database/MovePlaylistItem";
+    import DownloadWithMetadata from "../../ts/Database/DownloadWithMetadata";
+    let {songs, position, editMetadataCallback, databases, playlistItems, playlistId, showStatsCallback, selectCallback}: {songs: (MetadataSource | MetadataSourcePlaylist)[], position: number, editMetadataCallback: () => void, databases: DatabaseContainer, playlistItems?: PlaylistContainer[], playlistId?: string, showStatsCallback: () => void, selectCallback: () => void} = $props();
 
     /**
      * Convert the milliseconds to either the LRC or TTML timestamp
@@ -37,6 +39,7 @@
             playlistSrc={playlistItems}
             playlistDb={databases.playlistDb}
             trackId={songs[position].trackId}
+            metadataInfo={songs[position]}
             hasSyncedLyrics={songs[position].metadata.syncedLyrics.length !== 0}
             showPlaylistUpButton={playlistItems && position !== 0}
             showPlaylistDownButton={playlistItems && songs.length !== (position + 1)}
@@ -67,7 +70,11 @@
                     case "editMetadata": // Show the edit metadata dialog
                         editMetadataCallback();
                         break;
+                    case "selectSong":
+                        selectCallback();
+                        break;
                     case "deleteTrack": { // Delete track from the browser's storage
+                        if (!confirm(lang("Do you want to delete this track from the application? The file on your device won't be deleted."))) return;
                         const trackToDelete = songs.splice(position, 1);
                         for (const item of (playlistItems ?? [])) {
                             const index = item.data.contents.indexOf(trackToDelete[0].trackId);
@@ -102,55 +109,22 @@
                         if (!playlistItems) return;
                         const currentPlaylist = playlistItems.findIndex(i => i.id === playlistId);
                         if (currentPlaylist !== -1) {
-                            playlistItems[currentPlaylist].data.contents.splice(item === "playlistMoveUp" ? position - 1 : position + 1, 0, ...playlistItems[currentPlaylist].data.contents.splice(position, 1));
                             songs.splice(item === "playlistMoveUp" ? position - 1 : position + 1, 0, ...songs.splice(position, 1));
-                            await IndexedDatabase.set({
-                                db: databases.playlistDb,
-                                request: "playlist",
-                                object: JSON.parse(JSON.stringify(playlistItems[currentPlaylist]))
+                            await MovePlaylistItem({
+                                sourcePosition: position,
+                                destinationPosition: item === "playlistMoveUp" ? position - 1 : position + 1,
+                                playlist: playlistItems[currentPlaylist],
+                                playlistDb: databases.playlistDb
                             })
                         }
                         break;
                     }
                     case "downloadSong": {
-                        const audio = await GetAudioFile({songDb: databases.songDb, songId: songs[position].trackId, metadataDb: databases.metadataDb});
                         if (confirm(`${lang("Do you want to merge all the edited metadata with the output file? This will")}${localStorage.getItem("MusicPlayer-CachedWebAssembly") === "a" ? "" : lang("require downloading some libraries (~ 16MB) and will")} ${lang("use more memory. If you don't want to do so, click \"No\" and the original file you've uploaded will be downloaded")}.`)) {
-                            if (!UpdateMetadataOnOutputFile.isiFrameReady) { // We need to load the iFrame, and wait for the ready message
-                                await new Promise<void>(res => {
-                                    function waitForReadyMsg(e: MessageEvent) {
-                                        if (e.origin === new URL(UpdateMetadataOnOutputFile.iFrame.src).origin) {
-                                            if (e.data.ready) {
-                                                window.removeEventListener("message", waitForReadyMsg);
-                                                UpdateMetadataOnOutputFile.isiFrameReady = true;
-                                                localStorage.setItem("MusicPlayer-CachedWebAssembly", "a")
-                                                res();
-                                            }
-                                        }
-                                    }
-                                    window.addEventListener("message", waitForReadyMsg);
-                                    document.body.append(UpdateMetadataOnOutputFile.iFrame);
-                                    UpdateMetadataOnOutputFile.iFrame.src = UpdateMetadataOnOutputFile.iFrameSrc
-                                })
-                            }
-                            const albumArt = await IndexedDatabase.get({ // We'll load the album art directly from the database, without using the normal `GetAlbumArt` function, so that we'll avoid adding the fallback album art to the output file
-                                db: databases.albumArtDb,
-                                request: "albumArt",
-                                query: GetAlbumArtId({
-                                    albumAuthor: songs[position].metadata.albumArtist,
-                                    year: songs[position].metadata.year,
-                                    albumName: songs[position].metadata.album
-                                })
-                            });
-                            const metadata = JSON.parse(JSON.stringify(songs[position].metadata)) as metadataDB;
-                            if (metadata.syncedLyrics.length !== 0 && metadata.embeddedLyrics.trim() === "") metadata.embeddedLyrics = metadata.syncedLyrics.map(i => i.text).join("\n"); // Add at least the embedded lyrics in case the application has fetched synced lyrics
-                            UpdateMetadataOnOutputFile.iFrame.contentWindow?.postMessage({ // Send the necessary data to the Blazor WebAssembly iFrame
-                                type: "changeMetadata",
-                                buffer: new Uint8Array(await audio.arrayBuffer()),
-                                metadata,
-                                albumArt: albumArt ? new Uint8Array(await (albumArt.data as albumArtDB).img.arrayBuffer()) : undefined
-                            }, new URL(UpdateMetadataOnOutputFile.iFrame.src).origin);
+                            await DownloadWithMetadata({databases, songs: [songs[position]]})
                             return;
                         }
+                        const audio = await GetAudioFile({songDb: databases.songDb, songId: songs[position].trackId, metadataDb: databases.metadataDb});
                         // Standard download: download the file
                         const a = Object.assign(document.createElement("a"), {
                             href: URL.createObjectURL(audio),

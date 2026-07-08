@@ -14,7 +14,7 @@
     import { lang } from "../../ts/SvelteComponentsHelpers/Language";
     import { fade } from "svelte/transition";
     import SingleTrackButton from "./SingleItem/SingleTrackButton.svelte";
-    const {databases, metadataObj}: {
+    const {databases, metadataObj, selectCallback}: {
         /**
          * Object that contains all the IndexedDatabases used by the application
          */
@@ -22,7 +22,11 @@
         /**
          * List of all the metadata fetched, if loaded. They should be already sorted by album.
          */
-        metadataObj?: ([string, MetadataSource[]])[] 
+        metadataObj?: ([string, MetadataSource[]])[],
+        /**
+         * Function to call when the user selects a track
+         */
+        selectCallback: () => void
     } = $props();
     /**
      * A map that contains the album art ID as the key, and the album art source link as the value.
@@ -85,7 +89,7 @@
 {#if !metadataObj}
     <p>{lang("Loading data")}...</p>
 {:else} 
-    <input type="text" bind:this={searchBox} placeholder={lang("Search artists")} oninput={(e) => {
+    <input type="text" bind:this={searchBox} placeholder={lang("Search tracks")} oninput={(e) => {
         const val = searchBox.value.trim().toLowerCase();
         itemToShow = val === "" ? metadataObj.map(i => {
             i[0] = i[1][0].trackId;
@@ -98,7 +102,7 @@
    <div class="flex hcenter gap wrap trackWrap" style="align-items: stretch"> 
     {#each itemToShow as [numStr, metadata], i (numStr)}
     {#if renderItems + (10 * Math.max(1, Math.floor(window.innerWidth / 400))) > i}
-        <SingleTrackButton {albumArtCache} currentPosition={i} {databases} {metadataObj} {metadata} {handleAlbumArtCache} editMetadataCallback={() => {
+        <SingleTrackButton {selectCallback} {albumArtCache} currentPosition={i} {databases} {metadataObj} {metadata} {handleAlbumArtCache} editMetadataCallback={() => {
             showTrackOption = i;
         }} showStatsCallback={async () => {
             const stats = await IndexedDatabase.get({

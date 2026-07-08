@@ -14,7 +14,7 @@
     <script>
       if (typeof crypto.randomUUID === "undefined") crypto.randomUUID = () => Math.random().toString();  
       if (window.location.hash && window.location.hash !== "#restoreTheme") history.replaceState("", "", "./");
-      window.musicPlayerVersion = "1.0.1";
+      window.musicPlayerVersion = "1.1.0";
       (async () => {
         const result = await navigator.serviceWorker.register('./service-worker.js');
         if (navigator.onLine) await result.update();

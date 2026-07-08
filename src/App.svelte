@@ -9,19 +9,19 @@
   import IndexedDatabase from "./ts/Database/IndexedDatabase";
   import LoadMetadata from "./ts/DataFetcher/LoadMetadata";
   import {UploadSongs} from "./ts/Database/UploadSongs";
-  import type { InfoProps, MetadataSource, PossibleSortingOptions } from "./ts/Player/PlayerInterfaces";
+  import type { InfoProps, MetadataSource, PlaylistContainer, PossibleSortingOptions } from "./ts/Player/PlayerInterfaces";
   import AlbumViewer from "./lib/AlbumViewer.svelte";
   import AnimationHandler from "./ts/Animations/ImageAnimationHandler";
   import { onMount } from "svelte";
   import { fullscreenObject, mediaPlayerObject } from "./ts/Animations/CrossComponentAnimationsInfo";
   import { imageMap } from "./ts/SvelteComponentsHelpers/GlobalInformation";
-  import type { OpacityChange } from "./ts/Animations/AnimationTypes";
+  import type { OpacityChange, PopupScalingInfo } from "./ts/Animations/AnimationTypes";
   import Icons from "./ts/Icons/IconsManager";
   import DropdownMenuOpen from "./lib/DropdownMenu/DropdownMenuOpen.svelte";
   import Tracks from "./lib/PlayerTabs/Tracks.svelte";
   import Authors from "./lib/PlayerTabs/Authors.svelte";
   import ArtistImageManager from "./ts/DataFetcher/ArtistImageManager";
-  import { slide } from "svelte/transition";
+  import { fade, slide } from "svelte/transition";
   import { cubicInOut } from "svelte/easing";
   import HistoryHandler from "./ts/Player/HistoryHandler";
     import FullscreenAudioPlayer from "./lib/AudioPlayer/FullscreenAudioPlayer.svelte";
@@ -36,6 +36,15 @@
     import SettingProp from "./ts/Settings"
     import ReadM3UPlaylist from "./ts/Database/ReadM3UPlaylist";
     import ShowNewPlaylist from "./ts/SvelteComponentsHelpers/ShowNewPlaylist";
+    import SelectHelper from "./ts/SvelteComponentsHelpers/SelectHelper";
+    import DeleteFiles from "./ts/Database/DeleteFiles";
+    import Dialog from "./lib/Dialog.svelte";
+    import GetAllPlaylists from "./ts/DataFetcher/GetAllPlaylists";
+    import CreateNewPlaylist from "./ts/Database/CreateNewPlaylist";
+    import DropdownButtonShow from "./lib/DropdownMenu/DropdownButtonShow.svelte";
+    import SelectedItemDropdown from "./lib/DropdownMenu/SelectedItemDropdown.svelte";
+    import IconsManager from "./ts/Icons/IconsManager";
+    import SelectableMusic from "./ts/SvelteComponentsHelpers/SelectableMusic";
   let haveSongsBeenAdded = $state(
     localStorage.getItem("MusicPlayer-ItemsAdded") === "1",
   );
@@ -99,6 +108,28 @@
      * The type used to divide the `loadedMetadata` object.
      */
   let sortingType: PossibleSortingOptions = "album";
+  /**
+   * The number of selected items. If it's not undefined, a pop-up will be displayed in the bottom part of the webpage to let the user do some action with the selected tracks.
+   */
+  let showSelectedItemsCallback = $state<number | undefined>(undefined);
+  /**
+    * If not undefined, the playlist container array that the Playlist component is using to display all the playlist.
+    * Passed so that it's possible to create a new playlist from a selection of song tracks, and to display it in the Playlists section without re-reading all the database. 
+    */
+  let playlistObjectInUse: PlaylistContainer[] | undefined;
+  /**
+   * Function called when the user has selected/unselected a song track
+   */
+  function selectCallback() {
+    SelectHelper.isSelectModeEnabled = SelectHelper.selectedItems.size !== 0; // Disable select mode if no items are selected
+    if (!SelectHelper.isSelectModeEnabled) {
+      showSelectedItemsCallback = undefined;
+      SelectableMusic.clearAllSelected(); // Remove the gray-ish background color to all the selected items
+      return;
+    }
+    showSelectedItemsCallback = SelectHelper.selectedItems.size;
+  }
+
   onMount(async () => {
     // Load all the databases
     databases = {
@@ -403,6 +434,21 @@
             />
           </button>
           {/if}
+          {#if selectedInformation}
+          <button class="emptyButton flex hcenter wcenter" style="display: flex;" title={lang("Select all")} onclick={() => {
+            // This button allows to select all the songs in the current webpage. If every song is selected, all the songs in the webpage will be deselected.
+            SelectHelper.isSelectModeEnabled = true;
+            /**
+             * If true, all the songs have been selected
+             */
+            const areAllSelected = Array.from(SelectableMusic.list.values()).every(i => i.style.backgroundColor === "var(--cardtransparent)");
+            for (const [key, val] of SelectableMusic.list) {
+              if (!key.startsWith("Auto-") && (val.style.backgroundColor !== "var(--cardtransparent)" || areAllSelected)) val.click(); // With `!key.startsWith("Auto-")` we skip changing the color of all the songs that have been selected from the single track view.
+            }
+          }}>
+            <img src={Icons.getIconObjectUrl("selectall")} class="icon" use:AutoRevokeUrl alt={lang("Select all")}>
+          </button>
+          {/if}
                     <button
             class="emptyButton flex hcenter wcenter"
             style="display: flex;"
@@ -631,6 +677,28 @@
             PopupPlayerAnimationHandler.disappearElement(audioPlaybackController);
           }}></AudioPlayer>
         </div>
+        {#if typeof showSelectedItemsCallback === "number"}
+          <div class="bottomPlayerContainer opacity" style="opacity: 1; z-index: 10" in:fade={{easing: cubicInOut, duration: 200}} out:fade={{easing: cubicInOut, duration: 200}}>
+          <div class="flex hcenter">            
+            <p style="width: 100%">{lang("Selected items")}: {showSelectedItemsCallback}</p>
+            <div style="transform: translateY(1px)">
+              <button class="emptyButton flex hcenter gap" onclick={() => {
+                SelectHelper.selectedItems.clear();
+                selectCallback();
+              }}>
+              <img use:AutoRevokeUrl alt={lang("Discard selection")} src={IconsManager.getIconObjectUrl("dismiss")} style="width: 24px; height: 24px">
+            </button>
+            </div>
+            <div>
+              <DropdownButtonShow placeholderIcon="morevertical" iconAlt={lang("Options about the selected tracks")}>
+                {#snippet children(scaleInfo: PopupScalingInfo)}
+                    <SelectedItemDropdown playlistPassed={playlistObjectInUse} {pageShown} animationInfo={scaleInfo} {loadedMetadata} {databases} {selectCallback}></SelectedItemDropdown>
+                {/snippet}
+              </DropdownButtonShow>
+            </div>
+          </div>
+          </div>
+        {/if}
         {#if showFullscreenPlayer}
           <FullscreenAudioPlayer metadataDb={databases.metadataDb} albumArtDb={databases.albumArtDb} albumArt={`${showFullscreenPlayer.getAttribute("data-nextsrc") || showFullscreenPlayer.src}`} {skipHistoryUrlForFullscreenView} imageTransitionCallback={async (img, elements) => {
             await AnimationHandler.imageAnimationHandler({
@@ -652,7 +720,7 @@
               metadata={loadedMetadata}
             ></Albums>
           {:else if pageShown === "trackView"}
-            <Tracks {databases} metadataObj={loadedMetadata}></Tracks>
+            <Tracks {selectCallback} {databases} metadataObj={loadedMetadata}></Tracks>
           {:else if pageShown === "artistsView" || pageShown === "albumArtistsView"}
             <Authors
               {databases}
@@ -661,13 +729,14 @@
               isAlbumArtist={pageShown === "albumArtistsView"}
             ></Authors>
           {:else if pageShown === "playlistsView"}
-          <Playlists metadata={loadedMetadata} {databases} updateContent={(content) => (selectedInformation = content)}></Playlists>
+          <Playlists passPlaylists={(item) => (playlistObjectInUse = item)} metadata={loadedMetadata} {databases} updateContent={(content) => (selectedInformation = content)}></Playlists>
           {/if}
           <div use:registerEmptySpace></div>
           {/key}
         </div>
         {#if selectedInformation?.type === "album" || selectedInformation?.type === "artist" || selectedInformation?.type === "albumArtist" || selectedInformation?.type === "playlist"}
           <AlbumViewer
+            {selectCallback}
             {databases}
             allMetadataLoaded={loadedMetadata as [string, MetadataSource[]][]}
             songs={selectedInformation.metadata}

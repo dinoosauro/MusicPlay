@@ -26,6 +26,9 @@
     import { lang } from "../ts/SvelteComponentsHelpers/Language";
     import GetNewItemInMetadataListPosition from "../ts/DataFetcher/AddItemToMetadataList";
     import GetAlbumArt from "../ts/DataFetcher/GetAlbumArt";
+    import SelectHelper from "../ts/SvelteComponentsHelpers/SelectHelper";
+    import SelectableMusic from "../ts/SvelteComponentsHelpers/SelectableMusic";
+    import MovePlaylistItem from "../ts/Database/MovePlaylistItem";
 
     const {
         songs,
@@ -38,7 +41,8 @@
         mediaControllerDiv,
         playlistContainer,
         playlistId,
-        sortingType
+        sortingType,
+        selectCallback
     }: {
         /**
          * All the songs that should be displayed in the viewer
@@ -80,7 +84,11 @@
         /**
          * How the `allMetadataLoaded` object has been sorted
          */
-        sortingType: PossibleSortingOptions
+        sortingType: PossibleSortingOptions,
+        /**
+         * Function to call when the user selects or deselects a track
+         */
+        selectCallback: () => void
         /**
          * Function called when the album art has been loaded. This function is used so that a custom animation can be triggered.
          * @param img the element where the album art is shown
@@ -447,9 +455,18 @@
                     <p class="secondaryMetadata" style="font-size: 14px; margin: 0">{lang("Disk")} {songs[i].metadata.disk}</p>
                 </div>
                 {/if}
-                <div class="flex" style="padding: 10px;" draggable={arePlaylistItemsDraggable} role="button" tabindex={i} ondragover={(e) => {
+                <!-- svelte-ignore a11y_click_events_have_key_events -->
+                <div use:SelectableMusic.addToList={(song as MetadataSourcePlaylist).playlistId ?? song.trackId} class="flex" style={`padding: 10px; border-radius: 12px;${SelectHelper.selectedItems.has(song.trackId) ? " background-color: var(--cardtransparent)" : ""}`} draggable={arePlaylistItemsDraggable} role="button" tabindex={i} ondragover={(e) => {
                     e.preventDefault();
-                }} ondrop={(e) => { // Let's move the element from the playlist
+                }} onclick={(e) => {
+                    if (SelectHelper.isSelectModeEnabled) { // Update the list of selected tracks by adding/removing this track
+                        const id = (song as MetadataSourcePlaylist).playlistId ?? song.trackId;
+                        SelectHelper.selectedItems[SelectHelper.selectedItems.has(id) ? "delete" : "add"](id);
+                        const element = SelectableMusic.list.get(id);
+                        if (element) (element as HTMLElement).style.backgroundColor = !SelectHelper.selectedItems.has(id) ? "" : "var(--cardtransparent)";
+                        selectCallback();
+                    }
+                }} ondrop={async (e) => { // Let's move the element from the playlist
                     e.preventDefault();
                     const data = e.dataTransfer?.getData("text/plain");
                     if (typeof data !== "undefined") {
@@ -459,15 +476,12 @@
                         if (!playlistContainer) return;
                         const playlistIndex = playlistContainer.findIndex(i => i.id === playlistId);
                         if (playlistIndex !== -1) {
-                            playlistContainer[playlistIndex].data.contents = playlistContainer[playlistIndex].data.reversed ? [...songs.map(i => i.trackId)].reverse() : [...songs.map(i => i.trackId)];
-                            IndexedDatabase.set({
-                                db: databases.playlistDb,
-                                request: "playlist",
-                                object: {
-                                    id: playlistContainer[playlistIndex].id,
-                                    data: JSON.parse(JSON.stringify(playlistContainer[playlistIndex].data)) as playlistDB
-                                }
-                            })
+                            await MovePlaylistItem({
+                                sourcePosition: playlistContainer[playlistIndex].data.reversed ? playlistContainer[playlistIndex].data.contents.length - num - 1 : num,
+                                destinationPosition: playlistContainer[playlistIndex].data.reversed ? playlistContainer[playlistIndex].data.contents.length - i - 1 : i,
+                                playlist: playlistContainer[playlistIndex],
+                                playlistDb: databases.playlistDb
+                            });
                         }
                     }
                 }} ondragstart={(e) => {
@@ -490,6 +504,7 @@
                             class="emptyButton"
                             style="text-align: left; overflow-wrap: anywhere;"
                             onclick={async () => { // Let's play the new track
+                                if (SelectHelper.isSelectModeEnabled) return;
                                 let albumArtToSend: Blob | string | undefined = albumArt ? outputAlbumArtSrc : undefined;
                                 if (contentType !== "album") {
                                     if (playlistContainer) { // We need to manually fetch the album art since otherwise we would set the playlist thumbnail as the album art for the popup player
@@ -520,9 +535,13 @@
                                 const newSongs = [...songs];
                                 newSongs.unshift(...newSongs.splice(i));
                                 AudioManager.audioContext.queue = newSongs.map(i => {return {...i, queueId: crypto.randomUUID()}});
+                                AudioManager.audioContext.originalQueue = [...AudioManager.audioContext.queue];
                                 AudioManager.audioContext.queuePosition = 0;
                                 AudioManager.audioContext.repeat = "none";
                                 AudioManager.audioContext.shuffle = false;
+                                AudioManager.audioContext.playlistId = playlistId ?? null;
+                                AudioManager.audioContext.playlistStartPosition = i;
+                                AudioManager.audioContext.queueIdStart = AudioManager.audioContext.queue[0].queueId;
                             }}
                         >
                             <span>{song.metadata.title}</span>
@@ -535,7 +554,13 @@
                         </button>
                     </div>
                     <div>
-                        <SongMoreOptions {playlistId} playlistItems={playlistContainer} {songs} position={i} {databases} editMetadataCallback={() => (showMetadataEditor = i)} showStatsCallback={async () => {
+                        <SongMoreOptions selectCallback={() => {
+                            const id = (song as MetadataSourcePlaylist).playlistId ?? song.trackId;
+                            SelectHelper.selectedItems.add(id);
+                            const domElement = SelectableMusic.list.get(id);
+                            if (domElement) (domElement as HTMLElement).style.backgroundColor = "var(--cardtransparent)";
+                            selectCallback();
+                        }} {playlistId} playlistItems={playlistContainer} {songs} position={i} {databases} editMetadataCallback={() => (showMetadataEditor = i)} showStatsCallback={async () => {
                             const req = await IndexedDatabase.get({
                                 db: databases.songStatsDb,
                                 query: song.trackId,

@@ -2,6 +2,7 @@
 @using System;
 @using System.Reflection.Metadata
 @using System.Reflection
+@using System.IO.Compression
 @using System.Text.RegularExpressions
 @using System.Text
 
@@ -102,36 +103,68 @@
     }
 
     /// <summary>
-    /// Update the metadata of the passed audio file
+    /// Update the metadata of the passed audio files
     /// </summary>
     /// <param name="bytes">the Uint8Array of the audio file to update</param>
     /// <param name="metadata">the metadataDb entry with all the metadata</param>
     /// <param name="albumArt">an optional Uint8Array, that'll be the new album art of the file</param>
     [JSInvokable]
-    public static async void AddMetadata(byte[] bytes, metadataObject metadata, byte[]? albumArt) {
-        string realName = metadata.name[(metadata.name.LastIndexOf("/") + 1)..]; // Remove possible relative paths
-        MemoryStream stream = new MemoryStream();
-        await stream.WriteAsync(bytes);
-        TagLib.File file = TagLib.File.Create(new StreamFileAbstraction(realName, stream));
-        foreach (KeyValuePair<string, string> property in dictionary) { // Update all the properties 
-            string? newMetadataValue = metadata.GetType().GetProperty(property.Key)?.GetValue(metadata)?.ToString();
-            if (newMetadataValue == null) continue;
-            SetCurrentValue(newMetadataValue, file.Tag, property.Value);
+    public static async void AddMetadata(byte[][] bytesList, metadataObject[] metadataList, byte[][]? albumArts) {
+        List<string> fileNames = new List<string> {};
+        using (MemoryStream zipStream = new MemoryStream()) {
+            using (ZipArchive zipArchive = new ZipArchive(zipStream, ZipArchiveMode.Create, true)) {
+                for (int i = 0; i < metadataList.Count(); i++) {
+                    metadataObject metadata = metadataList[i];
+                    byte[]? albumArt =  albumArts[i];
+                    byte[] bytes = bytesList[i];
+                    string realName = metadata.name[(metadata.name.LastIndexOf("/") + 1)..]; // Remove possible relative paths
+                    MemoryStream stream = new MemoryStream();
+                    await stream.WriteAsync(bytes);
+                    TagLib.File file = TagLib.File.Create(new StreamFileAbstraction(realName, stream));
+                    foreach (KeyValuePair<string, string> property in dictionary) { // Update all the properties 
+                        string? newMetadataValue = metadata.GetType().GetProperty(property.Key)?.GetValue(metadata)?.ToString();
+                        if (newMetadataValue == null) continue;
+                        SetCurrentValue(newMetadataValue, file.Tag, property.Value);
+                    }
+                    if (albumArt != null) { // Add passed album art
+                        file.Tag.Pictures = [new TagLib.Picture{
+                            Type = TagLib.PictureType.FrontCover,
+                            Data = albumArt
+                        }];
+                    }
+                    file.Save();
+                    stream.Position = 0; // Important: without this, the downloaded file would be empty
+                    if (metadataList.Count() == 1) {
+                        DotNetStreamReference reference = new DotNetStreamReference(stream);
+                        await JsInteropHelper.InvokeVoidAsync("downloadFile", [reference, realName]);
+                        reference.Dispose();
+                    } else { // Since there are multiple music files, let's add them to a zip file
+                        string nameWithoutExtension = realName[..realName.LastIndexOf(".")];
+                        string extension = realName[realName.LastIndexOf(".")..];
+                        // Handle duplicates
+                        int num = 1;
+                        while (fileNames.Contains(nameWithoutExtension + extension)) {
+                            nameWithoutExtension = realName[..realName.LastIndexOf(".")] + "-" + num;
+                            num++;
+                        }
+                        ZipArchiveEntry entry = zipArchive.CreateEntry(nameWithoutExtension + extension);
+                        fileNames.Add(nameWithoutExtension + extension);
+                        using (Stream zipFileStream = entry.Open()) stream.CopyTo(zipFileStream);
+                    }
+                    stream.Close();
+                    stream.Dispose();
+                    file.Dispose();
+                }
+            }
+            if (metadataList.Count() != 1) { // Download the zip file
+                zipStream.Position = 0; // Important: without this, the downloaded file would be empty
+                DotNetStreamReference reference = new DotNetStreamReference(zipStream);
+                await JsInteropHelper.InvokeVoidAsync("downloadFile", [reference, "SelectedFiles.zip"]);
+                reference.Dispose();
+            }
         }
-        if (albumArt != null) { // Add passed album art
-            file.Tag.Pictures = [new TagLib.Picture{
-                Type = TagLib.PictureType.FrontCover,
-                Data = albumArt
-            }];
-        }
-        file.Save();
-        stream.Position = 0; // Important: without this, the downloaded file would be empty
-        DotNetStreamReference reference = new DotNetStreamReference(stream);
-        await JsInteropHelper.InvokeVoidAsync("downloadFile", [reference, realName]);
-        file.Dispose();
-        stream.Close();
-        stream.Dispose();
-        reference.Dispose();
+        fileNames.Clear();
+
     }
 
         /// <summary>
@@ -168,7 +201,7 @@
 <script>
     window.addEventListener("message", async (msg) => {
         if (msg.data.type === "changeMetadata") {
-            await DotNet.invokeMethodAsync("MusicPlay-SyncMetadata", "AddMetadata", msg.data.buffer, msg.data.metadata, msg.data.image ?? null);
+            await DotNet.invokeMethodAsync("MusicPlay-SyncMetadata", "AddMetadata", msg.data.buffer, msg.data.metadata, msg.data.albumArt.map(i => i || null));
             msg.data = {};
         }
     })
