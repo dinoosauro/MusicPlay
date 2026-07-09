@@ -11,7 +11,9 @@
         closeFn: () => void
     } = $props();
     onMount(() => {
-        if (window.location.hash.length < 2) window.history.pushState("", "", "./#start"); // Since, if the user closes the dialog with the gesture, we'll go back two times, this permits to avoid going back to another completely differnt page
+        const params = new URLSearchParams(window.location.hash.substring(1));
+        params.set("appSection", "start")
+        if (window.location.hash.length < 2) window.history.pushState("", "", `./#${params.toString()}`); // Since, if the user closes the dialog with the gesture, we'll go back two times, this permits to avoid going back to another completely differnt page
         HistoryHandler.closeCommand = closeFn;
         return () => (HistoryHandler.closeCommand = undefined);
     })

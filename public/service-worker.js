@@ -23,6 +23,7 @@ const filestoCache = [
     './assets/core.js',
     './assets/chart.js',
     './assets/index.js',
+    './assets/index2.js',
 ];
 self.addEventListener('install', e => {
     e.waitUntil(

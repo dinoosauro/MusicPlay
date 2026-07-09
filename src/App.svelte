@@ -9,19 +9,19 @@
   import IndexedDatabase from "./ts/Database/IndexedDatabase";
   import LoadMetadata from "./ts/DataFetcher/LoadMetadata";
   import {UploadSongs} from "./ts/Database/UploadSongs";
-  import type { InfoProps, MetadataSource, PossibleSortingOptions } from "./ts/Player/PlayerInterfaces";
+  import type { InfoProps, MetadataSource, PlaylistContainer, PossibleSortingOptions } from "./ts/Player/PlayerInterfaces";
   import AlbumViewer from "./lib/AlbumViewer.svelte";
   import AnimationHandler from "./ts/Animations/ImageAnimationHandler";
   import { onMount } from "svelte";
   import { fullscreenObject, mediaPlayerObject } from "./ts/Animations/CrossComponentAnimationsInfo";
   import { imageMap } from "./ts/SvelteComponentsHelpers/GlobalInformation";
-  import type { OpacityChange } from "./ts/Animations/AnimationTypes";
+  import type { OpacityChange, PopupScalingInfo } from "./ts/Animations/AnimationTypes";
   import Icons from "./ts/Icons/IconsManager";
   import DropdownMenuOpen from "./lib/DropdownMenu/DropdownMenuOpen.svelte";
   import Tracks from "./lib/PlayerTabs/Tracks.svelte";
   import Authors from "./lib/PlayerTabs/Authors.svelte";
   import ArtistImageManager from "./ts/DataFetcher/ArtistImageManager";
-  import { slide } from "svelte/transition";
+  import { fade, slide } from "svelte/transition";
   import { cubicInOut } from "svelte/easing";
   import HistoryHandler from "./ts/Player/HistoryHandler";
     import FullscreenAudioPlayer from "./lib/AudioPlayer/FullscreenAudioPlayer.svelte";
@@ -36,6 +36,15 @@
     import SettingProp from "./ts/Settings"
     import ReadM3UPlaylist from "./ts/Database/ReadM3UPlaylist";
     import ShowNewPlaylist from "./ts/SvelteComponentsHelpers/ShowNewPlaylist";
+    import SelectHelper from "./ts/SvelteComponentsHelpers/SelectHelper";
+    import DeleteFiles from "./ts/Database/DeleteFiles";
+    import Dialog from "./lib/Dialog.svelte";
+    import GetAllPlaylists from "./ts/DataFetcher/GetAllPlaylists";
+    import CreateNewPlaylist from "./ts/Database/CreateNewPlaylist";
+    import DropdownButtonShow from "./lib/DropdownMenu/DropdownButtonShow.svelte";
+    import SelectedItemDropdown from "./lib/DropdownMenu/SelectedItemDropdown.svelte";
+    import IconsManager from "./ts/Icons/IconsManager";
+    import SelectableMusic from "./ts/SvelteComponentsHelpers/SelectableMusic";
   let haveSongsBeenAdded = $state(
     localStorage.getItem("MusicPlayer-ItemsAdded") === "1",
   );
@@ -99,6 +108,36 @@
      * The type used to divide the `loadedMetadata` object.
      */
   let sortingType: PossibleSortingOptions = "album";
+  /**
+   * The number of selected items. If it's not undefined, a pop-up will be displayed in the bottom part of the webpage to let the user do some action with the selected tracks.
+   */
+  let showSelectedItemsCallback = $state<number | undefined>(undefined);
+  /**
+    * If not undefined, the playlist container array that the Playlist component is using to display all the playlist.
+    * Passed so that it's possible to create a new playlist from a selection of song tracks, and to display it in the Playlists section without re-reading all the database. 
+    */
+  let playlistObjectInUse: PlaylistContainer[] | undefined;
+  /**
+   * Function called when the user has selected/unselected a song track
+   */
+  function selectCallback() {
+    SelectHelper.isSelectModeEnabled = SelectHelper.selectedItems.size !== 0; // Disable select mode if no items are selected
+    if (!SelectHelper.isSelectModeEnabled) {
+      showSelectedItemsCallback = undefined;
+      SelectableMusic.clearAllSelected(); // Remove the gray-ish background color to all the selected items
+      SelectHelper.isRangeSelectModeEnabled = false;
+      return;
+    }
+    showSelectedItemsCallback = SelectHelper.selectedItems.size;
+  }
+    /**
+     * Get the sorting type for the `LoadMetadata` function
+     * @param id the `pageShown` identifier
+     */
+    function getSortingType(id: string) {
+      return id === "trackView" ? "none" : id === "artistsView" ? "authors" : id === "albumArtistsView" ? "albumauthors" : "album";
+    }
+
   onMount(async () => {
     // Load all the databases
     databases = {
@@ -111,7 +150,10 @@
       playlistImgDb: await IndexedDatabase.db("playlistImg"),
       songStatsDb: await IndexedDatabase.db("songStats")
     };
-    loadedMetadata = await LoadMetadata(databases, "album");
+    const params = new URLSearchParams(window.location.hash.substring(1));
+    const id = params.get("pageShown");
+    loadedMetadata = await LoadMetadata(databases, getSortingType(id || "albumView"));
+    if (id === "albumView" || id === "trackView" || id === "artistsView" || id === "albumArtistsView" || id === "playlistsView") pageShown = id;
     haveSongsBeenAdded = true; // Since, if there are no entries, the length of loadedMetadata will be 0
     AudioManager.updateSongDb(databases.songDb, databases.albumArtDb, databases.songStatsDb, databases.metadataDb); // Update the databases used by the AudioManager
     history.scrollRestoration = "manual"; // Avoid that the browser restores the scroll position when going forwards or backwards the webpage.
@@ -161,14 +203,16 @@
         HistoryHandler.closeCommand(); // Close the dialog
         return;
       }
+      const params = new URLSearchParams(window.location.hash.substring(1));
+      const hash = params.get("appSection") ?? "";
       if (showFullscreenPlayer) { // Fullscreen opened
-        if (window.location.hash === "#lyrics" || window.location.hash === "#queue") { // We need to open one of these two divs
-          if (fullscreenObject.lyrics.openRightSectionOfFullscreen) fullscreenObject.lyrics.openRightSectionOfFullscreen(true, window.location.hash === "#queue");
+        if (hash === "lyrics" || hash === "queue") { // We need to open one of these two divs
+          if (fullscreenObject.lyrics.openRightSectionOfFullscreen) fullscreenObject.lyrics.openRightSectionOfFullscreen(true, hash === "queue");
           return;
         }
-        if (window.location.hash !== "#fullscreen") { // Since the location hash is different both from the fullscreen one and from the divs related to fullscreen, we need to close the fullscreen.
+        if (hash !== "fullscreen") { // Since the location hash is different both from the fullscreen one and from the divs related to fullscreen, we need to close the fullscreen.
           audioPlaybackController.style.transform = "";
-          if (window.location.hash === "#" || window.location.hash === "" || window.location.hash === "#start") waitForLibraryViewer(); // Make the library viewer visible again
+          if (hash === "#" || hash === "" || hash === "start") waitForLibraryViewer(); // Make the library viewer visible again
           if (fullscreenObject.fullscreenContent.image && fullscreenObject.fullscreenContent.container) { // We can do the reverse animation from the fullscreen element to the pop-up player image
             await AnimationHandler.stopAnimation();
             PopupPlayerAnimationHandler.stopAnimation();
@@ -193,8 +237,8 @@
           return;
         }
       }
-      switch (window.location.hash) {
-        case "#fullscreen": { // Go to fullscreen mode
+      switch (hash) {
+        case "fullscreen": { // Go to fullscreen mode
           if (showFullscreenPlayer) { 
             fullscreenObject.lyrics.openRightSectionOfFullscreen && fullscreenObject.lyrics.openRightSectionOfFullscreen(window.innerWidth > 800);
             return;
@@ -206,16 +250,16 @@
           }
           break;
         }
-        case "#lyrics":
-        case "#queue": { // This should never be called, since to show the lyrics and the queue section the fullscreen object `showFullscreenPlayer` must be a vaild object. However, to be sure, we'll do the same logic here
+        case "lyrics":
+        case "queue": { // This should never be called, since to show the lyrics and the queue section the fullscreen object `showFullscreenPlayer` must be a vaild object. However, to be sure, we'll do the same logic here
           if (fullscreenObject.lyrics.openRightSectionOfFullscreen) {
             await PopupPlayerAnimationHandler.stopAnimation();
             await AnimationHandler.stopAnimation();
-            await fullscreenObject.lyrics.openRightSectionOfFullscreen(true, window.location.hash === "#queue");
+            await fullscreenObject.lyrics.openRightSectionOfFullscreen(true, hash === "queue");
           }
           break;
         }
-        case "#metadataList": { // We need to open the metadata viewer of a single album/artist/etc. We'll do a custom animtion from the album art of the clicked item to the main album art of the metadata list.
+        case "metadataList": { // We need to open the metadata viewer of a single album/artist/etc. We'll do a custom animtion from the album art of the clicked item to the main album art of the metadata list.
           const operation = crypto.randomUUID();
           backButtonOperationId = operation;
           document.body.style.overflow = "hidden"; // Avoid scrolling while the animation is ongoing
@@ -403,6 +447,21 @@
             />
           </button>
           {/if}
+          {#if selectedInformation}
+          <button class="emptyButton flex hcenter wcenter" style="display: flex;" title={lang("Select all")} onclick={() => {
+            // This button allows to select all the songs in the current webpage. If every song is selected, all the songs in the webpage will be deselected.
+            SelectHelper.isSelectModeEnabled = true;
+            /**
+             * If true, all the songs have been selected
+             */
+            const areAllSelected = Array.from(SelectableMusic.list.values()).every(i => i.style.backgroundColor === "var(--cardtransparent)");
+            for (const [key, val] of SelectableMusic.list) {
+              if (!key.startsWith("Track-") && (val.style.backgroundColor !== "var(--cardtransparent)" || areAllSelected)) val.click(); // With `!key.startsWith("Track-")` we skip changing the color of all the songs that have been selected from the single track view.
+            }
+          }}>
+            <img src={Icons.getIconObjectUrl("selectall")} class="icon" use:AutoRevokeUrl alt={lang("Select all")}>
+          </button>
+          {/if}
                     <button
             class="emptyButton flex hcenter wcenter"
             style="display: flex;"
@@ -428,10 +487,15 @@
               if (id === "albumView" || id === "trackView" || id === "artistsView" || id === "albumArtistsView" || id === "playlistsView") {
                 showFilterDropdownMenu = false;
                 if (databases) {
-                  sortingType = id === "trackView" ? "none" : id === "artistsView" ? "authors" : id === "albumArtistsView" ? "albumauthors" : "album";
+                  sortingType = getSortingType(id);
                   loadedMetadata = await LoadMetadata(databases, sortingType);
                 }
                 pageShown = id;
+                // Update the history URL with the new page 
+                const params = new URLSearchParams(window.location.hash.substring(1));
+                params.set("pageShown", id);
+                params.delete("openedResource");
+                history.pushState(history.state, "", `./#${params.toString()}`);
               }
             }}
             options={[
@@ -631,6 +695,44 @@
             PopupPlayerAnimationHandler.disappearElement(audioPlaybackController);
           }}></AudioPlayer>
         </div>
+        {#if typeof showSelectedItemsCallback === "number"}
+          <div class="bottomPlayerContainer opacity" style="opacity: 1; z-index: 10" in:fade={{easing: cubicInOut, duration: 200}} out:fade={{easing: cubicInOut, duration: 200}}>
+          <div class="flex hcenter">            
+            <p style="width: 100%">{lang("Selected items")}: {showSelectedItemsCallback}</p>
+            <div style="transform: translateY(1px);">
+              <button class="emptyButton flex hcenter gap" onclick={() => {
+                if (!SelectHelper.isRangeSelectModeEnabled && !confirm(lang("Do you want to enable range select mode? All the songs between the previous click and the next one will be selected. Click again on the icon to deselect all the items in the range. Click again to disable this mode."))) return;
+                SelectHelper.multipleTrackSelectionInformation.trackId = undefined;
+                if (!SelectHelper.isRangeSelectModeEnabled) {
+                  SelectHelper.isRangeSelectModeEnabled = true;
+                } else if (!SelectHelper.deselectItems) {
+                  SelectHelper.deselectItems = true;
+                } else {
+                  SelectHelper.isRangeSelectModeEnabled = false;
+                  SelectHelper.deselectItems = false;
+                }
+              }}>
+                <img use:AutoRevokeUrl alt={lang("Enable range select mode")} src={IconsManager.getIconObjectUrl("selectobject")} style="width: 21px; height: 21px;">
+              </button>
+            </div>
+            <div style="transform: translateY(1px)">
+              <button class="emptyButton flex hcenter gap" onclick={() => {
+                SelectHelper.selectedItems.clear();
+                selectCallback();
+              }}>
+              <img use:AutoRevokeUrl alt={lang("Discard selection")} src={IconsManager.getIconObjectUrl("dismiss")} style="width: 24px; height: 24px">
+            </button>
+            </div>
+            <div>
+              <DropdownButtonShow placeholderIcon="morevertical" iconAlt={lang("Options about the selected tracks")}>
+                {#snippet children(scaleInfo: PopupScalingInfo)}
+                    <SelectedItemDropdown playlistPassed={playlistObjectInUse} {pageShown} animationInfo={scaleInfo} {loadedMetadata} {databases} {selectCallback}></SelectedItemDropdown>
+                {/snippet}
+              </DropdownButtonShow>
+            </div>
+          </div>
+          </div>
+        {/if}
         {#if showFullscreenPlayer}
           <FullscreenAudioPlayer metadataDb={databases.metadataDb} albumArtDb={databases.albumArtDb} albumArt={`${showFullscreenPlayer.getAttribute("data-nextsrc") || showFullscreenPlayer.src}`} {skipHistoryUrlForFullscreenView} imageTransitionCallback={async (img, elements) => {
             await AnimationHandler.imageAnimationHandler({
@@ -640,7 +742,7 @@
                   imgZIndex: "15",
                   elements,
               });
-              if (window.location.hash === "#metadataList") libraryViewer.style.opacity = "0";
+              if (new URLSearchParams(window.location.hash.substring(1)).get("appSection") === "metadataList") libraryViewer.style.opacity = "0";
           }}></FullscreenAudioPlayer>
       {/if}
         <div bind:this={libraryViewer}>
@@ -652,7 +754,7 @@
               metadata={loadedMetadata}
             ></Albums>
           {:else if pageShown === "trackView"}
-            <Tracks {databases} metadataObj={loadedMetadata}></Tracks>
+            <Tracks {selectCallback} {databases} metadataObj={loadedMetadata}></Tracks>
           {:else if pageShown === "artistsView" || pageShown === "albumArtistsView"}
             <Authors
               {databases}
@@ -661,13 +763,14 @@
               isAlbumArtist={pageShown === "albumArtistsView"}
             ></Authors>
           {:else if pageShown === "playlistsView"}
-          <Playlists metadata={loadedMetadata} {databases} updateContent={(content) => (selectedInformation = content)}></Playlists>
+          <Playlists passPlaylists={(item) => (playlistObjectInUse = item)} metadata={loadedMetadata} {databases} updateContent={(content) => (selectedInformation = content)}></Playlists>
           {/if}
           <div use:registerEmptySpace></div>
           {/key}
         </div>
         {#if selectedInformation?.type === "album" || selectedInformation?.type === "artist" || selectedInformation?.type === "albumArtist" || selectedInformation?.type === "playlist"}
           <AlbumViewer
+            {selectCallback}
             {databases}
             allMetadataLoaded={loadedMetadata as [string, MetadataSource[]][]}
             songs={selectedInformation.metadata}
@@ -690,7 +793,7 @@
                 for (const element of elements)
                   element.element.style.opacity = "1";
               }
-              if (window.location.hash === "#metadataList") libraryViewer.style.opacity = "0";
+              if (new URLSearchParams(window.location.hash.substring(1)).get("appSection") === "metadataList") libraryViewer.style.opacity = "0";
             }}
           ></AlbumViewer>
         {/if}
@@ -698,17 +801,3 @@
     {/if}
   </main>
 {/key}
-
-<style>
-  .bottomPlayerContainer {
-    position: fixed;
-    bottom: 25px;
-    width: 75vw;
-    left: calc(12.5vw - 21px);
-    padding: 20px;
-    border-radius: 36px;
-    border: 1px solid var(--text);
-    backdrop-filter: blur(8px) brightness(50%);
-    z-index: 5;
-  }
-</style>

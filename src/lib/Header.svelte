@@ -5,7 +5,7 @@
 <header>
     <div class="flex hcenter gap">
         <img alt="Logo" src="./icon.svg" style="width: 64px; height: 64px">
-        <h1>Music Player</h1>
+        <h1>MusicPlay</h1>
     </div>
     <p>{lang("Play and view your local library from your browser")}</p>
 </header>

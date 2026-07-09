@@ -3,12 +3,14 @@
     import DropdownAnimation from "../../ts/Animations/DropdownAnimation";
     import DropdownMenuOpen from "./DropdownMenuOpen.svelte";
     import GetAllPlaylists from "../../ts/DataFetcher/GetAllPlaylists";
-    import type { PlaylistContainer } from "../../ts/Player/PlayerInterfaces";
+    import type { MetadataSource, PlaylistContainer } from "../../ts/Player/PlayerInterfaces";
     import Dialog from "../Dialog.svelte";
     import IndexedDatabase from "../../ts/Database/IndexedDatabase";
     import type { playlistDB } from "../../ts/Database/DatabaseInterfaces";
     import { lang } from "../../ts/SvelteComponentsHelpers/Language";
     import type { PopupScalingInfo } from "../../ts/Animations/AnimationTypes";
+    import CreateNewPlaylist from "../../ts/Database/CreateNewPlaylist";
+    import { addToPlaylist } from "../../ts/Database/AddToPlaylist";
 
     const {
         animationInfo,
@@ -18,7 +20,8 @@
         playlistSrc,
         showPlaylistUpButton,
         showPlaylistDownButton,
-        hasSyncedLyrics
+        hasSyncedLyrics,
+        metadataInfo
     }: {
         animationInfo: PopupScalingInfo;
         callback: (item: string) => void;
@@ -36,7 +39,11 @@
         /**
          * Show the button to move an entry below in a playlist
          */
-        showPlaylistDownButton?: boolean
+        showPlaylistDownButton?: boolean,
+        /**
+         * Metadata information about the currently-selected track.
+         */
+        metadataInfo: MetadataSource
     } = $props();
     /**
      * Main container of the song options dropdown
@@ -57,27 +64,7 @@
             playlistItems = await GetAllPlaylists(playlistDb);
         }
     });
-    /**
-     * Add the current track to the playlist *database*. 
-     * This function does not update the `playlistSrc` object, and therefore that's done in the `SongMoreOptions.svelte` file.
-     * @param playlistId the ID of the playlist where the new song should be added
-     * @returns true if the song has been added to the playlist in the database, false otherwise.
-     */
-    async function addToPlaylist(playlistId: string) {
-        const playlist = playlistItems.find((i) => i.id === playlistId);
-        if (playlist) {
-            if (playlist.data.contents.indexOf(trackId) === -1 || confirm(lang("This song has already been added to the playlist. Do you want to add it again?"))) {
-                playlist.data.contents.push(trackId);
-                await IndexedDatabase.set({
-                    db: playlistDb,
-                    request: "playlist",
-                    object: JSON.parse(JSON.stringify(playlist)),
-                });
-                return true;
-            }
-        }
-        return false;
-    }
+
 </script>
 
 <div
@@ -149,6 +136,14 @@
             },
             {
                 categoryInfo: {
+                    text: lang("Select song"),
+                    id: "selectSong",
+                    icon: "selectall"
+                },
+                categoryItems: []
+            },
+            {
+                categoryInfo: {
                     text: lang("Edit metadata"),
                     id: "editMetadata",
                     icon: "edit",
@@ -203,30 +198,22 @@
                 case "createNewPlaylist": {
                     const playlistName = prompt(lang("Pick a name for the new playlist."));
                     if (playlistName === null) return;
-                    const newPlaylistId = crypto.randomUUID();
-                    // Let's first add the new playlist in the object, by looking at the position
-                    let index = 0;
-                    const isListInReverse = playlistItems.length > 1 && playlistItems[0].data.name.localeCompare(playlistItems[1].data.name) === 1;
-                    while (index < playlistItems.length) {
-                        if (playlistItems[index].data.isPinned) { // The new playlist must always be after pinned items
-                            index++;
-                            continue;
-                        }
-                        if (playlistItems[index].data.name.localeCompare(playlistName) !== (isListInReverse ? 1 : -1)) break;
-                        index++;
-                    }
-                    playlistItems.splice(index, 0, {
-                        id: newPlaylistId,
-                        data: {
-                            name: playlistName,
-                            contents: []
-                        }
+                    const newPlaylistId = CreateNewPlaylist(playlistItems, playlistName);
+                    sendCallback = await addToPlaylist({
+                        playlistId: newPlaylistId,
+                        playlistDb,
+                        playlistItems,
+                        trackToAdd: metadataInfo
                     });
-                    sendCallback = await addToPlaylist(newPlaylistId);
                     break;
                 }
                 case "AddToPlaylist": {
-                    sendCallback = await addToPlaylist(item.substring(item.indexOf("-") + 1));
+                    sendCallback = await addToPlaylist({
+                        playlistId: item.substring(item.indexOf("-") + 1),
+                        playlistDb,
+                        playlistItems,
+                        trackToAdd: metadataInfo
+                    })
                     break;
                 }
             }

@@ -93,7 +93,8 @@ select,
 
 span,
 p,
-label {
+label,
+u {
   font-size: 14px;
 }
 
@@ -156,7 +157,10 @@ textarea,
   font-family: var(--font);
 }
 
-.btn:hover, select:hover, input:hover, .hover:hover {
+.btn:hover,
+select:hover,
+input:hover,
+.hover:hover {
   cursor: pointer;
 }
 
@@ -179,6 +183,7 @@ input[type=checkbox] {
   appearance: none;
   position: relative;
 }
+
 input[type=checkbox]::before {
   content: "";
   border-radius: 50%;
@@ -190,14 +195,17 @@ input[type=checkbox]::before {
   position: absolute;
   transition: left 0.2s ease-in-out;
 }
+
 input[type=checkbox]:checked {
   background-color: var(--accent);
 }
+
 input[type=checkbox]:checked::before {
   left: 41px;
 }
 
-.dialog .multiCircularButton, .dialog.circularButtonContainer {
+.dialog .multiCircularButton,
+.dialog.circularButtonContainer {
   left: 100%;
   position: sticky;
   top: 15px;
@@ -303,9 +311,11 @@ a {
   0% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.5;
   }
+
   100% {
     opacity: 1;
   }
@@ -315,9 +325,9 @@ button:disabled {
   animation: disabledAnimation 1s infinite ease-in-out;
 }
 
-.trackWrap > * {
-        flex: 1 0 400px;
-    }
+.trackWrap>* {
+  flex: 1 0 400px;
+}
 
 input[type=range] {
   --currentsize: 1px;
@@ -332,6 +342,7 @@ input[type=range] {
   overflow: hidden;
   display: block;
 }
+
 .slider::before {
   appearance: none;
   position: absolute;
@@ -347,6 +358,7 @@ input[type=range] {
   z-index: 1;
   pointer-events: none;
 }
+
 .slider {
   position: relative;
   overflow: hidden;
@@ -354,11 +366,13 @@ input[type=range] {
   display: block;
   border-radius: 12px;
 }
+
 input[type=range]:hover {
   height: 25px;
 }
+
 .slider:has(input[type=range]:hover)::before {
-    background-color: var(--text);
+  background-color: var(--text);
 }
 
 input[type=range]::-webkit-slider-thumb {
@@ -368,4 +382,16 @@ input[type=range]::-webkit-slider-thumb {
 input[type=range]::-moz-range-thumb {
   appearance: none;
   opacity: 0;
+}
+
+.bottomPlayerContainer {
+  position: fixed;
+  bottom: 25px;
+  width: 75vw;
+  left: calc(12.5vw - 21px);
+  padding: 20px;
+  border-radius: 36px;
+  border: 1px solid var(--text);
+  backdrop-filter: blur(8px) brightness(50%);
+  z-index: 5;
 }

@@ -102,7 +102,7 @@ const availableTranslations = new Map<string, TranslationProps>([
     ["Add to playlist", {it: "Aggiungi alla playlist"}],
     ["Create new playlist", {it: "Crea una nuova playlist"}],
     ["Remove from playlist", {it: "Rimuovi dalla playlist"}],
-    ["Delete track", {it: "Rimuovi traccia"}],
+    ["Delete track", {it: "Elimina traccia"}],
     ["Edit metadata", {it: "Modifica metadati"}],
     ["View stats", {it: "Visualizza statistiche"}],
     ["Pick a name for the new playlist.", {it: "Scegli un nome per la nuova playlist"}],
@@ -232,10 +232,25 @@ const availableTranslations = new Map<string, TranslationProps>([
     ["Information about MusicPlay", {it: "Informazioni su MusicPlay"}],
     ["Do you want to merge all the edited metadata with the output file? This will", {it: "Vuoi unire tutti i metadati modificati con il file di destinazione? Questo"}],
     ["require downloading some libraries (~ 16MB) and will", {it: "richiederà il download di alcune librerie (~ 16MB) e"}],
-    ["use more memory. If you don't want to do so, click \"No\" and the original file you've uploaded will be downloaded", {it: "Utilizzerà più memoria. Se non vuoi unirli, clicca \"No\" per scaricare il file originale che hai caricato"}],
+    ["use more memory. If you don't want to do so, click \"No\" and the original file you've uploaded will be downloaded", {it: "utilizzerà più memoria. Se non vuoi unirli, clicca \"No\" per scaricare il file originale che hai caricato"}],
     ["Export synced lyrics", {it: "Esporta testo sincronizzato"}],
     ["LRC file", {it: "File LRC"}],
-    ["TTML file", {it: "File TTML"}]
+    ["TTML file", {it: "File TTML"}],
+    ["Selected items", {it: "Elementi selezionati"}],
+    ["Discard selection", {it: "Elimina selezione"}],
+    ["Options about the selected tracks", {it: "Opzioni sulle tracce selezionate"}],
+    ["Select song", {it: "Seleziona canzone"}],
+    ["Some of the songs have already been added to the playlist. Do you want to add them again? If you cancel this operation, only the new songs will be added to the playlist.", {it: "Alcune di queste canzoni sono già state aggiunte alla playlist. Vuoi aggiungerle di nuovo? Se annulli, solo le nuove canzoni verranno aggiunte alla playlist."}],
+    ["Do you want to delete this track from the application? The file on your device won't be deleted.", {it: "Vuoi eliminare questa traccia dall'applicazione? Il file sul tuo dispositivo non sarà eliminato."}],
+    ["Do you want to delete the selected items from the application? The files on your device won't be deleted.", {it: "Vuoi eliminare gli elementi selezionati dall'applicazione? I file sul tuo dispositivo non saranno eliminati."}],
+    ["Download tracks", {it: "Scarica tracce"}],
+    ["Do you want to enable range select mode? All the songs between the previous click and the next one will be selected. Click again on the icon to deselect all the items in the range. Click again to disable this mode.", {it: "Vuoi abilitare la modalità di selezione di gruppo? Tutte le canzoni presenti tra il clic precedente e quello successivo verranno selezionate. Clicca di nuovo per deselezionare tutte le canzoni nel gruppo cliccato. Clicca ancora per disabilitare."}],
+    ["Playlist deletion mode enabled", {it: "Modalità di eliminazione playlist attivata"}],
+    ["Disable playlist deletion mode", {it: "Disabilità modalità eliminazione playlist"}],
+    ["Do you want to enable playlist range mode deletion? All the songs between the previous click and the next one will be deleted.", {it: "Vuoi abilitare la modalità di eliminazione di gruppo dalla playlist? Tutte le canzoni comprese tra il clic precedente e quello successivo verranno eliminate dalla playlist."}],
+    ["Enable/disable playlist range deletion mode", {it: "Abilita/disabilita la modalità di eliminazione di gruppo dalla playlist"}],
+    ["Do you want to enable delete mode? All the items you'll click in this playlist will be removed from the playlist. You'll find a pop-up at the bottom of the webpage to exit from this mode.", {it: "Vuoi abilitare la modalità di eliminazione? Tutti gli elementi che cliccherai in questa playlist verranno rimossi dalla playlist."}],
+    ["Do you want to delete this playlist", {it: "Vuoi eliminare questa playlist"}]
 ]);
 
 /**

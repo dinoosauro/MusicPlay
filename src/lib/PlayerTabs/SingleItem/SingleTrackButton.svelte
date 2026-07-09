@@ -7,7 +7,9 @@
     import AudioManager from "../../../ts/Player/AudioManager";
     import SongMoreOptions from "../../DropdownMenu/SongMoreOptions.svelte";
     import type { MetadataSource } from "../../../ts/Player/PlayerInterfaces";
-    let {metadata, albumArtCache, databases, metadataObj, currentPosition, handleAlbumArtCache, editMetadataCallback, showStatsCallback}: {
+    import SelectHelper from "../../../ts/SvelteComponentsHelpers/SelectHelper";
+    import SelectableMusic from "../../../ts/SvelteComponentsHelpers/SelectableMusic";
+    let {metadata, albumArtCache, databases, metadataObj, currentPosition, handleAlbumArtCache, editMetadataCallback, showStatsCallback, selectCallback}: {
         /**
          * An array of the metadata that contains only an entry
          */
@@ -41,7 +43,11 @@
         /**
          * The function to call when the user wants to see the listening stats of the song
          */
-        showStatsCallback: () => void
+        showStatsCallback: () => void,
+        /**
+         * Function to call when the user selects a track
+         */
+        selectCallback: () => void
     } = $props();
 
 
@@ -71,6 +77,37 @@
 </script>
 <button bind:this={opacityBtn} onclick={async (e) => {
         if ((e.target as HTMLElement).getAttribute("data-disableclick") !== null || (e.target as HTMLElement).closest("[data-disableclick]")) return; // Avoid playing the track if the user clicked on the three dots
+        if (SelectHelper.isSelectModeEnabled) {
+            SelectHelper.selectedItems[SelectHelper.selectedItems.has(trackId) ? "delete" : "add"](trackId);
+            opacityBtn.style.backgroundColor = !SelectHelper.selectedItems.has(trackId) ? "" : "var(--cardtransparent)";
+            if (SelectHelper.isRangeSelectModeEnabled) {
+                const currentTrackId = SelectHelper.multipleTrackSelectionInformation.trackId; // Let's store it as a new variable since it will be changed when the user clicks on the button
+                if (currentTrackId === trackId) return; // Otherwise, all the items below the clicked item would be selected
+                if (!Array.from(SelectableMusic.list).find(i => i[0] === `Track-${currentTrackId}`)) { // Check that there's the element tied to that ID
+                    SelectHelper.multipleTrackSelectionInformation.trackId = trackId;
+                    return;
+                }
+                /**
+                 * If true, all the next elements in the list should be clicked.
+                 */
+                let startClicking = false;
+                for (const [key, element] of SelectableMusic.list) {
+                    if (!key.startsWith("Track-")) continue;
+                    if (key === `Track-${currentTrackId}`) {
+                        startClicking = !startClicking;
+                        continue;
+                    }
+                    if (key === `Track-${trackId}`) {
+                        startClicking = !startClicking;
+                        continue;
+                    }
+                    startClicking && ((element.style.backgroundColor === "" && !SelectHelper.deselectItems) || (SelectHelper.deselectItems && element.style.backgroundColor !== "")) && element.click();
+                }
+            }
+            selectCallback();
+            SelectHelper.multipleTrackSelectionInformation.trackId = trackId;
+            return;
+        }
         const albumArtId = GetAlbumArtId({albumAuthor: albumArtist, year, albumName});
         const cache = albumArtCache.get(albumArtId);
         const getAudio = await GetAudioFile({songDb: databases.songDb, songId: trackId, metadataDb: databases.metadataDb});
@@ -91,9 +128,10 @@
         const newItem = [...metadataObj.map(i => i[1])].flat();
         newItem.unshift(...newItem.splice(currentPosition)); // Let's move all the items after the selected track at the start of the queue
         AudioManager.audioContext.queue = newItem.map(i => {return {...i, queueId: crypto.randomUUID()}});
+        AudioManager.audioContext.originalQueue = [...AudioManager.audioContext.queue];
         AudioManager.audioContext.queuePosition = 0;
-        Audio
-    }} class="emptyButton flex hcenter gap card maxWidth" out:fade={{duration: 1, delay: 1000}} style="display: flex; height: auto">
+        AudioManager.audioContext.playlistId = null;
+    }} class="emptyButton flex hcenter gap card maxWidth" use:SelectableMusic.addToList={`Track-${trackId}`} out:fade={{duration: 1, delay: 1000}} style={`display: flex; height: auto; transition: 0.2s ease-in-out;${SelectHelper.selectedItems.has(trackId) ? " background-color: var(--cardtransparent)" : ""}`}>
         {#await handleAlbumArtCache(GetAlbumArtId({albumAuthor: albumArtist, year, albumName}), albumName)}
             
         {:then item} 
@@ -104,7 +142,11 @@
             <p class="secondaryMetadata">{artist} – {albumName}</p>
         </div>
         <div data-disableclick>
-            <SongMoreOptions songs={metadataObj[currentPosition][1]} position={0} {databases} {editMetadataCallback} {showStatsCallback}></SongMoreOptions>
+            <SongMoreOptions selectCallback={() => {
+                SelectHelper.selectedItems.add(trackId);
+                opacityBtn.style.backgroundColor = "var(--cardtransparent)";
+                selectCallback();
+            }} songs={metadataObj[currentPosition][1]} position={0} {databases} {editMetadataCallback} {showStatsCallback}></SongMoreOptions>
         </div>
     </button>
 

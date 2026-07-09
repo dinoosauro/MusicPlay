@@ -44,18 +44,14 @@
             window.removeEventListener("scroll", scrollFn);
         }
     });
-
-    const metadataMap = new Map<string, [string, string]>([]);
-    function getAuthorOf(id: string, metadata: MetadataSource[]) {
-        if (metadata.length === 0) {
-            const data = metadataMap.get(id);
-            metadataMap.delete(id);
-            if (data) return data;
-            return ["", ""];
+    $effect(() => {
+         // Get the previously-opened resource, and try to restore it
+        const resource = new URLSearchParams(window.location.hash.substring(1)).get("openedResource");
+        if (resource !== null && itemToShow) {
+            const index = itemToShow.findIndex(i => i[0] === resource);
+            if (index !== -1 && index > renderItems) renderItems = index + 1; // Increase the number of loaded resources so that also the previously-opened album can be loaded and opened (the logic used to open the album is in the `SingleAlbumButton` component)
         }
-        metadataMap.set(id, [metadata[0].metadata.album, metadata[0].metadata.albumArtist]);
-        return [metadata[0].metadata.album, metadata[0].metadata.albumArtist];
-    }
+    })
     let searchBox: HTMLInputElement;
 </script>
 
