@@ -130,6 +130,13 @@
     }
     showSelectedItemsCallback = SelectHelper.selectedItems.size;
   }
+    /**
+     * Get the sorting type for the `LoadMetadata` function
+     * @param id the `pageShown` identifier
+     */
+    function getSortingType(id: string) {
+      return id === "trackView" ? "none" : id === "artistsView" ? "authors" : id === "albumArtistsView" ? "albumauthors" : "album";
+    }
 
   onMount(async () => {
     // Load all the databases
@@ -143,7 +150,10 @@
       playlistImgDb: await IndexedDatabase.db("playlistImg"),
       songStatsDb: await IndexedDatabase.db("songStats")
     };
-    loadedMetadata = await LoadMetadata(databases, "album");
+    const params = new URLSearchParams(window.location.hash.substring(1));
+    const id = params.get("pageShown");
+    loadedMetadata = await LoadMetadata(databases, getSortingType(id || "albumView"));
+    if (id === "albumView" || id === "trackView" || id === "artistsView" || id === "albumArtistsView" || id === "playlistsView") pageShown = id;
     haveSongsBeenAdded = true; // Since, if there are no entries, the length of loadedMetadata will be 0
     AudioManager.updateSongDb(databases.songDb, databases.albumArtDb, databases.songStatsDb, databases.metadataDb); // Update the databases used by the AudioManager
     history.scrollRestoration = "manual"; // Avoid that the browser restores the scroll position when going forwards or backwards the webpage.
@@ -193,14 +203,16 @@
         HistoryHandler.closeCommand(); // Close the dialog
         return;
       }
+      const params = new URLSearchParams(window.location.hash.substring(1));
+      const hash = params.get("appSection") ?? "";
       if (showFullscreenPlayer) { // Fullscreen opened
-        if (window.location.hash === "#lyrics" || window.location.hash === "#queue") { // We need to open one of these two divs
-          if (fullscreenObject.lyrics.openRightSectionOfFullscreen) fullscreenObject.lyrics.openRightSectionOfFullscreen(true, window.location.hash === "#queue");
+        if (hash === "lyrics" || hash === "queue") { // We need to open one of these two divs
+          if (fullscreenObject.lyrics.openRightSectionOfFullscreen) fullscreenObject.lyrics.openRightSectionOfFullscreen(true, hash === "queue");
           return;
         }
-        if (window.location.hash !== "#fullscreen") { // Since the location hash is different both from the fullscreen one and from the divs related to fullscreen, we need to close the fullscreen.
+        if (hash !== "fullscreen") { // Since the location hash is different both from the fullscreen one and from the divs related to fullscreen, we need to close the fullscreen.
           audioPlaybackController.style.transform = "";
-          if (window.location.hash === "#" || window.location.hash === "" || window.location.hash === "#start") waitForLibraryViewer(); // Make the library viewer visible again
+          if (hash === "#" || hash === "" || hash === "start") waitForLibraryViewer(); // Make the library viewer visible again
           if (fullscreenObject.fullscreenContent.image && fullscreenObject.fullscreenContent.container) { // We can do the reverse animation from the fullscreen element to the pop-up player image
             await AnimationHandler.stopAnimation();
             PopupPlayerAnimationHandler.stopAnimation();
@@ -225,8 +237,8 @@
           return;
         }
       }
-      switch (window.location.hash) {
-        case "#fullscreen": { // Go to fullscreen mode
+      switch (hash) {
+        case "fullscreen": { // Go to fullscreen mode
           if (showFullscreenPlayer) { 
             fullscreenObject.lyrics.openRightSectionOfFullscreen && fullscreenObject.lyrics.openRightSectionOfFullscreen(window.innerWidth > 800);
             return;
@@ -238,16 +250,16 @@
           }
           break;
         }
-        case "#lyrics":
-        case "#queue": { // This should never be called, since to show the lyrics and the queue section the fullscreen object `showFullscreenPlayer` must be a vaild object. However, to be sure, we'll do the same logic here
+        case "lyrics":
+        case "queue": { // This should never be called, since to show the lyrics and the queue section the fullscreen object `showFullscreenPlayer` must be a vaild object. However, to be sure, we'll do the same logic here
           if (fullscreenObject.lyrics.openRightSectionOfFullscreen) {
             await PopupPlayerAnimationHandler.stopAnimation();
             await AnimationHandler.stopAnimation();
-            await fullscreenObject.lyrics.openRightSectionOfFullscreen(true, window.location.hash === "#queue");
+            await fullscreenObject.lyrics.openRightSectionOfFullscreen(true, hash === "queue");
           }
           break;
         }
-        case "#metadataList": { // We need to open the metadata viewer of a single album/artist/etc. We'll do a custom animtion from the album art of the clicked item to the main album art of the metadata list.
+        case "metadataList": { // We need to open the metadata viewer of a single album/artist/etc. We'll do a custom animtion from the album art of the clicked item to the main album art of the metadata list.
           const operation = crypto.randomUUID();
           backButtonOperationId = operation;
           document.body.style.overflow = "hidden"; // Avoid scrolling while the animation is ongoing
@@ -475,10 +487,15 @@
               if (id === "albumView" || id === "trackView" || id === "artistsView" || id === "albumArtistsView" || id === "playlistsView") {
                 showFilterDropdownMenu = false;
                 if (databases) {
-                  sortingType = id === "trackView" ? "none" : id === "artistsView" ? "authors" : id === "albumArtistsView" ? "albumauthors" : "album";
+                  sortingType = getSortingType(id);
                   loadedMetadata = await LoadMetadata(databases, sortingType);
                 }
                 pageShown = id;
+                // Update the history URL with the new page 
+                const params = new URLSearchParams(window.location.hash.substring(1));
+                params.set("pageShown", id);
+                params.delete("openedResource");
+                history.pushState(history.state, "", `./#${params.toString()}`);
               }
             }}
             options={[
@@ -725,7 +742,7 @@
                   imgZIndex: "15",
                   elements,
               });
-              if (window.location.hash === "#metadataList") libraryViewer.style.opacity = "0";
+              if (new URLSearchParams(window.location.hash.substring(1)).get("appSection") === "metadataList") libraryViewer.style.opacity = "0";
           }}></FullscreenAudioPlayer>
       {/if}
         <div bind:this={libraryViewer}>
@@ -776,7 +793,7 @@
                 for (const element of elements)
                   element.element.style.opacity = "1";
               }
-              if (window.location.hash === "#metadataList") libraryViewer.style.opacity = "0";
+              if (new URLSearchParams(window.location.hash.substring(1)).get("appSection") === "metadataList") libraryViewer.style.opacity = "0";
             }}
           ></AlbumViewer>
         {/if}

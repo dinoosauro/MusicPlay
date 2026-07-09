@@ -160,7 +160,10 @@
             albumName: songs[0].metadata.album
         })}` : `${contentType === "playlist" ? "PlaylistImg" : "ArtistImg"}-${contentType === "playlist" ? playlistId : songs[0].metadata[contentType === "artist" ? "artist" : "albumArtist"]}`;
         if (!skipHistoryUrl) {
-            history.pushState(state, "", `./#metadataList`);
+            const params = new URLSearchParams(window.location.hash.substring(1));
+            params.set("appSection", "metadataList");
+            params.set("openedResource", state.substring(state.indexOf("-") + 1));
+            history.pushState(state, "", `./#${params.toString()}`);
             HistoryHandler.prevImageId = state;
         }
         document.body.style.overflow = "hidden"; // Avoid that the user can continue to scroll the album/artist/etc list
@@ -315,8 +318,20 @@
     <div>
         {#if showMetadataEditor === "author" && playlistContainer && playlistId}
             <PlaylistEditor {songs} deleteCallback={async () => {
-                playlistContainer.find(i => i.id === playlistId)?.data.contents.splice(0);
-                songs.splice(0, songs.length);
+                await IndexedDatabase.remove({
+                    db: databases.playlistDb,
+                    request: "playlist",
+                    query: playlistId
+                });
+                await IndexedDatabase.remove({
+                    db: databases.playlistImgDb,
+                    request: "playlistImg",
+                    query: playlistId
+                });
+                setTimeout(() => {
+                    playlistContainer.find(i => i.id === playlistId)?.data.contents.splice(0);
+                    songs.splice(0);
+                }, 500); // Wait that the dialog element is closed so that the script can go back of a page
             }} albumArt={outputAlbumArtSrc} closeCallback={(imgSrc) => {
                     showMetadataEditor = "none";
                     if (imgSrc) outputAlbumArtSrc = imgSrc;

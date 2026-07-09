@@ -159,9 +159,12 @@
             rightDivContainer.style.opacity = "0";
             await new Promise(res => setTimeout(res, 200));
         }
+        const params = new URLSearchParams(window.location.hash.substring(1));
+        const hash = params.get("appSection")
         // Now, let's add the URL to the history session if requested.
-        if (addHistoryUrl && openRightDiv && window.location.hash !== (openQueue ? "#queue" : "#lyrics")) {
-            window.history.pushState("", "", openQueue ? "#queue" : window.innerWidth > 800 ? "#fullscreen" : "#lyrics");
+        if (addHistoryUrl && openRightDiv && hash !== (openQueue ? "queue" : "lyrics")) {
+            params.set("appSection", openQueue ? "queue" : window.innerWidth > 800 ? "fullscreen" : "lyrics")
+            window.history.pushState("", "", `./#${params.toString()}`);
         }
         // If the new div should be displayed (or hidden) at the right of the screen, we just need to change the variables, and Svelte will handle the opacity transitions.
         if (window.innerWidth > 800) { 
@@ -205,7 +208,9 @@
     })
     onMount(() => {
         if (!skipHistoryUrlForFullscreenView) {
-            window.history.pushState("", "", "#fullscreen");
+            const params = new URLSearchParams(window.location.hash.substring(1));
+            params.set("appSection", "fullscreen")
+            window.history.pushState("", "", `./#${params.toString()}`);
         }
         fullscreenObject.lyrics.openRightSectionOfFullscreen = openRightSectionOfFullscreen;
 

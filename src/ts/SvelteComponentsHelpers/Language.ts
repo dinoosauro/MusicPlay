@@ -249,7 +249,8 @@ const availableTranslations = new Map<string, TranslationProps>([
     ["Disable playlist deletion mode", {it: "Disabilità modalità eliminazione playlist"}],
     ["Do you want to enable playlist range mode deletion? All the songs between the previous click and the next one will be deleted.", {it: "Vuoi abilitare la modalità di eliminazione di gruppo dalla playlist? Tutte le canzoni comprese tra il clic precedente e quello successivo verranno eliminate dalla playlist."}],
     ["Enable/disable playlist range deletion mode", {it: "Abilita/disabilita la modalità di eliminazione di gruppo dalla playlist"}],
-    ["Do you want to enable delete mode? All the items you'll click in this playlist will be removed from the playlist. You'll find a pop-up at the bottom of the webpage to exit from this mode.", {it: "Vuoi abilitare la modalità di eliminazione? Tutti gli elementi che cliccherai in questa playlist verranno rimossi dalla playlist."}]
+    ["Do you want to enable delete mode? All the items you'll click in this playlist will be removed from the playlist. You'll find a pop-up at the bottom of the webpage to exit from this mode.", {it: "Vuoi abilitare la modalità di eliminazione? Tutti gli elementi che cliccherai in questa playlist verranno rimossi dalla playlist."}],
+    ["Do you want to delete this playlist", {it: "Vuoi eliminare questa playlist"}]
 ]);
 
 /**

@@ -5,6 +5,7 @@
     import { imageMap, addImageToMap } from "../../../ts/SvelteComponentsHelpers/GlobalInformation";
     import type { DatabaseContainer } from "../../../ts/Database/DatabaseInterfaces";
     import type { InfoProps, MetadataSource } from "../../../ts/Player/PlayerInterfaces";
+    import CheckOpenedResource from "../../../ts/SvelteComponentsHelpers/CheckOpenedResource";
     let {databases, albumId, entries, updateContent}: {
         /**
          * Object that contains all the IndexedDatabases used by the application
@@ -39,6 +40,7 @@
 <button
     class="emptyButton card"
     style="height: auto;"
+    use:CheckOpenedResource={albumId}
     onclick={async () => {
         const albumArt = await GetAlbumArt({
             db: databases?.albumArtDb,

@@ -13,7 +13,11 @@
     <div id="app"></div>
     <script>
       if (typeof crypto.randomUUID === "undefined") crypto.randomUUID = () => Math.random().toString();  
-      if (window.location.hash && window.location.hash !== "#restoreTheme") history.replaceState("", "", "./");
+      if (window.location.hash && window.location.hash !== "#restoreTheme") {
+        const params = new URLSearchParams(window.location.hash.substring(1));
+        params.delete("appSection");
+        history.replaceState("", "", `./#${params.toString()}`);
+      }
       window.musicPlayerVersion = "1.1.0";
       (async () => {
         const result = await navigator.serviceWorker.register('./service-worker.js');

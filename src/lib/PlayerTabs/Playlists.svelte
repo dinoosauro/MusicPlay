@@ -12,6 +12,7 @@
     import IndexedDatabase from "../../ts/Database/IndexedDatabase";
     import AutoRevokeUrl from "../../ts/SvelteComponentsHelpers/AutoRevokeUrl";
     import ShowNewPlaylist from "../../ts/SvelteComponentsHelpers/ShowNewPlaylist";
+    import CheckOpenedResource from "../../ts/SvelteComponentsHelpers/CheckOpenedResource";
 
     let {metadata, databases, updateContent, passPlaylists}: {
         /**
@@ -93,6 +94,14 @@
             HistoryHandler.backContext.deletePlaylist = undefined;
             ShowNewPlaylist.showPlaylist = undefined;
         }
+    });
+        $effect(() => {
+         // Get the previously-opened resource, and try to restore it
+        const resource = new URLSearchParams(window.location.hash.substring(1)).get("openedResource");
+        if (resource !== null && itemToShow) {
+            const index = itemToShow.findIndex(i => i.id === resource);
+            if (index !== -1 && index > renderItems) renderItems = index + 1; // Increase the number of loaded resources so that also the previously-opened artist can be loaded and opened 
+        }
     })
     let searchBox: HTMLInputElement;
 </script>
@@ -111,7 +120,7 @@
        <div class="flex hcenter gap wrap" style="align-items: stretch"> 
             {#each itemToShow as playlistItem, i (playlistItem.id)}
                 {#if renderItems + (10 * Math.max(1, Math.floor(window.innerWidth / 400))) > i}
-                <button class="emptyButton flex hcenter gap card maxWidth" style="display: flex; height: auto;" onclick={(e) => {
+                <button class="emptyButton flex hcenter gap card maxWidth" style="display: flex; height: auto;" use:CheckOpenedResource={{id: playlistItem.id, waitUntilImageMap: `PlaylistImg-${playlistItem.id}`}} onclick={(e) => {
                     if ((e.target as HTMLElement).getAttribute("data-disableclick") !== null || (e.target as HTMLElement).closest("[data-disableclick]")) return; // Avoid playing the track if the user clicked on the three dots
                     const metadata = getMetadata(playlistItem);
                     if (!metadata || metadata.length === 0) return;
@@ -162,7 +171,22 @@
                             }
                         })
                     }}>
-                        <img style="width: 24px; height: 24px;" src={IconsManager.getIconObjectUrl(playlistItem.data.isPinned ? "pinoff" : "pin")} alt={lang("Pin/unpin playlist")}>
+                        <img use:AutoRevokeUrl style="width: 24px; height: 24px;" src={IconsManager.getIconObjectUrl(playlistItem.data.isPinned ? "pinoff" : "pin")} alt={lang("Pin/unpin playlist")}>
+                    </div>
+                    <!-- svelte-ignore a11y_click_events_have_key_events -->
+                    <!-- svelte-ignore a11y_no_static_element_interactions -->
+                    <div data-disableclick title={lang("Delete playlist")} onclick={async (e) => {
+                        if (!confirm(`${lang("Do you want to delete this playlist")}: ${playlistItem.data.name}`)) return;
+                        const mainBtn = (e.target as HTMLElement).closest("button");
+                        if (mainBtn) {
+                            mainBtn.style.opacity = "0";
+                            await new Promise<void>(res => mainBtn.animate([{opacity: "1"},{opacity: "0"}], {duration: 400, easing: "ease-in-out"}).addEventListener("finish", () => res()));
+                        }
+                        HistoryHandler.backContext.deletePlaylist && HistoryHandler.backContext.deletePlaylist(playlistItem.id);
+                        IndexedDatabase.remove({db: databases.playlistDb, request: "playlist", query: playlistItem.id});
+                        IndexedDatabase.remove({db: databases.playlistImgDb, request: "playlistImg", query: playlistItem.id});
+                    }}>
+                        <img use:AutoRevokeUrl style="width: 24px; height: 24px;" src={IconsManager.getIconObjectUrl("delete")} alt={lang("Delete playlist")}>
                     </div>
                 </button>
                 {/if}

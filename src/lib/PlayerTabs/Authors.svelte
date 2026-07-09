@@ -8,6 +8,7 @@
     import { fade } from "svelte/transition";
     import { onMount } from "svelte";
     import AutoRevokeUrl from "../../ts/SvelteComponentsHelpers/AutoRevokeUrl";
+    import CheckOpenedResource from "../../ts/SvelteComponentsHelpers/CheckOpenedResource";
 
     const { databases, updateContent, isAlbumArtist, metadata }: { 
         /**
@@ -48,6 +49,14 @@
             window.removeEventListener("scroll", scrollFn);
         }
     })
+    $effect(() => {
+         // Get the previously-opened resource, and try to restore it
+        const resource = new URLSearchParams(window.location.hash.substring(1)).get("openedResource");
+        if (resource !== null && itemToShow) {
+            const index = itemToShow.findIndex(i => i[0] === resource);
+            if (index !== -1 && index > renderItems) renderItems = index + 1; // Increase the number of loaded resources so that also the previously-opened artist can be loaded and opened 
+        }
+    })
     let searchBox: HTMLInputElement;
 </script>
 
@@ -62,14 +71,13 @@
     <div class="flex hcenter gap wrap" style="align-items: stretch">
         {#each itemToShow as [name, entries], i (name)}
             {#if renderItems + (10 * Math.max(1, Math.floor(window.innerWidth / 400))) > i}
-            <button onclick={() => {
+            <button use:CheckOpenedResource={{id: name, waitUntilImageMap: `ArtistImg-${name}`}} onclick={() => {
                 updateContent({
                 metadata: entries,
                 type: isAlbumArtist ? "albumArtist" : "artist",
                 albumArt: imageMap.get(`ArtistImg-${name}`)?.src,
                 albumArtImg: imageMap.get(`ArtistImg-${name}`)
             })
-
             }} class="emptyButton flex hcenter gap card maxWidth" style="display: flex; height: auto;">
                 {#await ArtistImageManager.fetchImage({author: name, artistImageDb: databases.artistImgDb})}
                 {:then src}
