@@ -17,7 +17,7 @@
     import IndexedDatabase from "../ts/Database/IndexedDatabase";
     import SortAlbumTracks from "../ts/Database/SortAlbumTracks";
     import { mediaPlayerObject } from "../ts/Animations/CrossComponentAnimationsInfo";
-    import { slide } from "svelte/transition";
+    import { fade, slide } from "svelte/transition";
     import { cubicInOut } from "svelte/easing";
     import SongMoreOptions from "./DropdownMenu/SongMoreOptions.svelte";
     import PlaylistEditor from "./MetadataEditor/PlaylistEditor.svelte";
@@ -29,6 +29,7 @@
     import SelectHelper from "../ts/SvelteComponentsHelpers/SelectHelper";
     import SelectableMusic from "../ts/SvelteComponentsHelpers/SelectableMusic";
     import MovePlaylistItem from "../ts/Database/MovePlaylistItem";
+    import appendToBody from "../ts/SvelteComponentsHelpers/AppendToBody";
 
     const {
         songs,
@@ -139,6 +140,18 @@
         let [firstMetadataToCompare, secondMetadataToCompare] = sortingType === "album" ? [allMetadataLoaded[0][1][0].metadata.album, allMetadataLoaded[1][1][0].metadata.album] : [allMetadataLoaded[0][0], allMetadataLoaded[1][0]]
         isListInReverse = firstMetadataToCompare.localeCompare(secondMetadataToCompare) === 1;
     }
+    /**
+     * If true, for each click the song should be deleted from the playlist
+     */
+    let isPlaylistDeletionModeEnabled = $state(false);
+    /**
+     * If true, all the elements selected from the previous click to the next one will be deleted.
+     */
+    let isPlaylistRangeDeletetionModeEnabled = false;
+    /**
+     * The ID of the song that has been clicked the last time
+     */
+    let previouslyClickedId: string | undefined = undefined;
     onMount(() => {
         // Let's update the state of the current page, by adding the ID that can be used to get the image from which the transition originated. In this way, we can permit to trigger that animation even using browser's next/previous page controls
         const state = !contentType || contentType === "album" ? `AArt-${GetAlbumArtId({
@@ -282,7 +295,23 @@
             />
         {/if}
     </div>
-
+    {#if isPlaylistDeletionModeEnabled}
+        <div use:appendToBody class="bottomPlayerContainer opacity" style="opacity: 1; z-index: 10" in:fade={{easing: cubicInOut, duration: 200}} out:fade={{easing: cubicInOut, duration: 200}}>
+        <div class="flex hcenter gap">
+            <p style="width: 100%;">{lang("Playlist deletion mode enabled")}.</p>
+            <button class="emptyButton flex hcenter gap" onclick={() => {
+                if (!isPlaylistRangeDeletetionModeEnabled && !confirm(lang("Do you want to enable playlist range mode deletion? All the songs between the previous click and the next one will be deleted."))) return;
+                isPlaylistRangeDeletetionModeEnabled = !isPlaylistRangeDeletetionModeEnabled;
+                previouslyClickedId = undefined;
+            }}>
+                <img style="width: 22px; height: 22px" src={IconsManager.getIconObjectUrl("selectobject")} alt={lang("Enable/disable playlist range deletion mode")} use:AutoRevokeUrl>
+            </button>
+            <button onclick={() => (isPlaylistDeletionModeEnabled = false)} class="emptyButton flex hcenter gap">
+                <img use:AutoRevokeUrl alt={lang("Disable playlist deletion mode")} src={IconsManager.getIconObjectUrl("dismiss")}>
+            </button>
+        </div>
+        </div>
+    {/if}
     <div>
         {#if showMetadataEditor === "author" && playlistContainer && playlistId}
             <PlaylistEditor {songs} deleteCallback={async () => {
@@ -458,14 +487,61 @@
                 <!-- svelte-ignore a11y_click_events_have_key_events -->
                 <div use:SelectableMusic.addToList={(song as MetadataSourcePlaylist).playlistId ?? song.trackId} class="flex" style={`padding: 10px; border-radius: 12px;${SelectHelper.selectedItems.has(song.trackId) ? " background-color: var(--cardtransparent)" : ""}`} draggable={arePlaylistItemsDraggable} role="button" tabindex={i} ondragover={(e) => {
                     e.preventDefault();
-                }} onclick={(e) => {
+                }} onclick={async (e) => {
+                    if (isPlaylistRangeDeletetionModeEnabled && (!previouslyClickedId || !(songs as MetadataSourcePlaylist[]).find(i => i.playlistId === previouslyClickedId))) { // If playlist deletion mode is enabled, check that the previously clicked id is valid before doing anything
+                        previouslyClickedId = (song as MetadataSourcePlaylist).playlistId ?? song.trackId;
+                        return;
+                    }
                     if (SelectHelper.isSelectModeEnabled) { // Update the list of selected tracks by adding/removing this track
                         const id = (song as MetadataSourcePlaylist).playlistId ?? song.trackId;
                         SelectHelper.selectedItems[SelectHelper.selectedItems.has(id) ? "delete" : "add"](id);
                         const element = SelectableMusic.list.get(id);
                         if (element) (element as HTMLElement).style.backgroundColor = !SelectHelper.selectedItems.has(id) ? "" : "var(--cardtransparent)";
                         selectCallback();
+                    } else if (isPlaylistDeletionModeEnabled && playlistContainer) {
+                        const playlist = playlistContainer.find(i => i.id === playlistId);
+                        if (!playlist) return;
+                        if (isPlaylistRangeDeletetionModeEnabled) {
+                            let index = songs.findIndex(i => (i as MetadataSourcePlaylist).playlistId === (song as MetadataSourcePlaylist).playlistId);
+                            let prevIndex = songs.findIndex(i => previouslyClickedId === (i as MetadataSourcePlaylist).playlistId);
+                            songs.splice(prevIndex, (index - prevIndex + 1));
+                            // Let's build again the track array of the playlist
+                            playlist.data.contents = songs.map(i => i.trackId);
+                            if (playlist.data.reversed) playlist.data.contents.reverse();
+                            await IndexedDatabase.set({db: databases.playlistDb, request: "playlist", object: JSON.parse(JSON.stringify(playlist))});
+                            return;
+                        }
+                        // Standard playlist removal mode: only a single item should be removed
+                        let index = songs.findIndex(i => (i as MetadataSourcePlaylist).playlistId === (song as MetadataSourcePlaylist).playlistId);
+                        playlist.data.contents.splice(playlist.data.reversed ? playlist.data.contents.length - index - 1 : index, 1);
+                        await IndexedDatabase.set({db: databases.playlistDb, request: "playlist", object: JSON.parse(JSON.stringify(playlist))});
+                        songs.splice(index, 1);
+                        previouslyClickedId = undefined;
                     }
+                    if (SelectHelper.isRangeSelectModeEnabled && previouslyClickedId) { // Select all the elements between the previous click and the next one
+                        /**
+                         * If true, the element should be skipped
+                         */
+                        let skipThis = true;
+                        const listKeys = Array.from(SelectableMusic.list.entries()).map(i => i[0]);
+                        /**
+                         * If true, the user has clicked an item above the previous item. Therefore, it's not related with the playlist reverse function
+                         */
+                        const isReversed = listKeys.indexOf(previouslyClickedId) > listKeys.indexOf((song as MetadataSourcePlaylist).playlistId ?? song.trackId);
+                        const prevId = isReversed ? (song as MetadataSourcePlaylist).playlistId ?? song.trackId : previouslyClickedId;
+                        const currentId = isReversed ? previouslyClickedId : (song as MetadataSourcePlaylist).playlistId ?? song.trackId;
+                        if (prevId !== currentId) {
+                            for (const [key, element] of SelectableMusic.list) {
+                                if (skipThis && key !== prevId) continue;
+                                if (key === prevId) { // Don't click the first item of the range. However, we need to start clicking the next buttons.
+                                    skipThis = false;
+                                    continue;
+                                }
+                                if (key === currentId) break; else if ((element.style.backgroundColor === "" && !SelectHelper.deselectItems) || (SelectHelper.deselectItems && element.style.backgroundColor !== "")) element.click(); // Don't click the last item of the range
+                            }
+                        }
+                    }
+                    previouslyClickedId = (song as MetadataSourcePlaylist).playlistId ?? song.trackId;
                 }} ondrop={async (e) => { // Let's move the element from the playlist
                     e.preventDefault();
                     const data = e.dataTransfer?.getData("text/plain");
@@ -504,7 +580,7 @@
                             class="emptyButton"
                             style="text-align: left; overflow-wrap: anywhere;"
                             onclick={async () => { // Let's play the new track
-                                if (SelectHelper.isSelectModeEnabled) return;
+                                if (SelectHelper.isSelectModeEnabled || isPlaylistDeletionModeEnabled) return;
                                 let albumArtToSend: Blob | string | undefined = albumArt ? outputAlbumArtSrc : undefined;
                                 if (contentType !== "album") {
                                     if (playlistContainer) { // We need to manually fetch the album art since otherwise we would set the playlist thumbnail as the album art for the popup player
@@ -554,7 +630,9 @@
                         </button>
                     </div>
                     <div>
-                        <SongMoreOptions selectCallback={() => {
+                        <SongMoreOptions enableDeleteModeCallback={playlistId ? () => {
+                            isPlaylistDeletionModeEnabled = true;
+                        } : undefined} selectCallback={() => {
                             const id = (song as MetadataSourcePlaylist).playlistId ?? song.trackId;
                             SelectHelper.selectedItems.add(id);
                             const domElement = SelectableMusic.list.get(id);
@@ -573,11 +651,7 @@
                         }}></SongMoreOptions>
                     </div>
                     <div class="flex hcenter">
-                        <span
-                            >{ConvertSecondsInTimestamp(
-                                song.metadata.duration,
-                            )}</span
-                        >
+                        <span>{ConvertSecondsInTimestamp(song.metadata.duration)}</span>
                     </div>
                 </div>
             {/each}

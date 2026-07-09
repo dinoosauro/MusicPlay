@@ -80,7 +80,32 @@
         if (SelectHelper.isSelectModeEnabled) {
             SelectHelper.selectedItems[SelectHelper.selectedItems.has(trackId) ? "delete" : "add"](trackId);
             opacityBtn.style.backgroundColor = !SelectHelper.selectedItems.has(trackId) ? "" : "var(--cardtransparent)";
+            if (SelectHelper.isRangeSelectModeEnabled) {
+                const currentTrackId = SelectHelper.multipleTrackSelectionInformation.trackId; // Let's store it as a new variable since it will be changed when the user clicks on the button
+                if (currentTrackId === trackId) return; // Otherwise, all the items below the clicked item would be selected
+                if (!Array.from(SelectableMusic.list).find(i => i[0] === `Track-${currentTrackId}`)) { // Check that there's the element tied to that ID
+                    SelectHelper.multipleTrackSelectionInformation.trackId = trackId;
+                    return;
+                }
+                /**
+                 * If true, all the next elements in the list should be clicked.
+                 */
+                let startClicking = false;
+                for (const [key, element] of SelectableMusic.list) {
+                    if (!key.startsWith("Track-")) continue;
+                    if (key === `Track-${currentTrackId}`) {
+                        startClicking = !startClicking;
+                        continue;
+                    }
+                    if (key === `Track-${trackId}`) {
+                        startClicking = !startClicking;
+                        continue;
+                    }
+                    startClicking && ((element.style.backgroundColor === "" && !SelectHelper.deselectItems) || (SelectHelper.deselectItems && element.style.backgroundColor !== "")) && element.click();
+                }
+            }
             selectCallback();
+            SelectHelper.multipleTrackSelectionInformation.trackId = trackId;
             return;
         }
         const albumArtId = GetAlbumArtId({albumAuthor: albumArtist, year, albumName});
@@ -106,7 +131,7 @@
         AudioManager.audioContext.originalQueue = [...AudioManager.audioContext.queue];
         AudioManager.audioContext.queuePosition = 0;
         AudioManager.audioContext.playlistId = null;
-    }} class="emptyButton flex hcenter gap card maxWidth" use:SelectableMusic.addToList out:fade={{duration: 1, delay: 1000}} style={`display: flex; height: auto; transition: 0.2s ease-in-out;${SelectHelper.selectedItems.has(trackId) ? " background-color: var(--cardtransparent)" : ""}`}>
+    }} class="emptyButton flex hcenter gap card maxWidth" use:SelectableMusic.addToList={`Track-${trackId}`} out:fade={{duration: 1, delay: 1000}} style={`display: flex; height: auto; transition: 0.2s ease-in-out;${SelectHelper.selectedItems.has(trackId) ? " background-color: var(--cardtransparent)" : ""}`}>
         {#await handleAlbumArtCache(GetAlbumArtId({albumAuthor: albumArtist, year, albumName}), albumName)}
             
         {:then item} 

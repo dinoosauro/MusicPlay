@@ -13,7 +13,7 @@
     import GetAlbumArtId from "../../ts/DataFetcher/GetAlbumArtId";
     import MovePlaylistItem from "../../ts/Database/MovePlaylistItem";
     import DownloadWithMetadata from "../../ts/Database/DownloadWithMetadata";
-    let {songs, position, editMetadataCallback, databases, playlistItems, playlistId, showStatsCallback, selectCallback}: {songs: (MetadataSource | MetadataSourcePlaylist)[], position: number, editMetadataCallback: () => void, databases: DatabaseContainer, playlistItems?: PlaylistContainer[], playlistId?: string, showStatsCallback: () => void, selectCallback: () => void} = $props();
+    let {songs, position, editMetadataCallback, databases, playlistItems, playlistId, showStatsCallback, selectCallback, enableDeleteModeCallback}: {songs: (MetadataSource | MetadataSourcePlaylist)[], position: number, editMetadataCallback: () => void, databases: DatabaseContainer, playlistItems?: PlaylistContainer[], playlistId?: string, showStatsCallback: () => void, selectCallback: () => void, enableDeleteModeCallback?: () => void} = $props();
 
     /**
      * Convert the milliseconds to either the LRC or TTML timestamp
@@ -91,7 +91,7 @@
                         const currentPlaylist = playlistItems?.findIndex(i => i.id === playlistId);
                         if (typeof currentPlaylist !== "undefined" && currentPlaylist !== -1 && playlistItems) {
                             const index = playlistItems[currentPlaylist].data.contents.indexOf(trackToDelete.trackId);
-                            if (index !== -1) playlistItems[currentPlaylist].data.contents.splice(index, 1);
+                            if (index !== -1) playlistItems[currentPlaylist].data.contents.splice(playlistItems[currentPlaylist].data.reversed ? playlistItems[currentPlaylist].data.contents.length - index - 1 : index, 1);
                             await IndexedDatabase.set({
                                 db: databases.playlistDb,
                                 request: "playlist",
@@ -99,6 +99,7 @@
                             })
                         }
                         songs.splice(position, 1);
+                        typeof enableDeleteModeCallback !== "undefined" && confirm(lang("Do you want to enable delete mode? All the items you'll click in this playlist will be removed from the playlist. You'll find a pop-up at the bottom of the webpage to exit from this mode.")) && enableDeleteModeCallback();
                         break;
                     }
                     case "viewStats": // Show the stats dialog

@@ -125,6 +125,7 @@
     if (!SelectHelper.isSelectModeEnabled) {
       showSelectedItemsCallback = undefined;
       SelectableMusic.clearAllSelected(); // Remove the gray-ish background color to all the selected items
+      SelectHelper.isRangeSelectModeEnabled = false;
       return;
     }
     showSelectedItemsCallback = SelectHelper.selectedItems.size;
@@ -443,7 +444,7 @@
              */
             const areAllSelected = Array.from(SelectableMusic.list.values()).every(i => i.style.backgroundColor === "var(--cardtransparent)");
             for (const [key, val] of SelectableMusic.list) {
-              if (!key.startsWith("Auto-") && (val.style.backgroundColor !== "var(--cardtransparent)" || areAllSelected)) val.click(); // With `!key.startsWith("Auto-")` we skip changing the color of all the songs that have been selected from the single track view.
+              if (!key.startsWith("Track-") && (val.style.backgroundColor !== "var(--cardtransparent)" || areAllSelected)) val.click(); // With `!key.startsWith("Track-")` we skip changing the color of all the songs that have been selected from the single track view.
             }
           }}>
             <img src={Icons.getIconObjectUrl("selectall")} class="icon" use:AutoRevokeUrl alt={lang("Select all")}>
@@ -681,6 +682,22 @@
           <div class="bottomPlayerContainer opacity" style="opacity: 1; z-index: 10" in:fade={{easing: cubicInOut, duration: 200}} out:fade={{easing: cubicInOut, duration: 200}}>
           <div class="flex hcenter">            
             <p style="width: 100%">{lang("Selected items")}: {showSelectedItemsCallback}</p>
+            <div style="transform: translateY(1px);">
+              <button class="emptyButton flex hcenter gap" onclick={() => {
+                if (!SelectHelper.isRangeSelectModeEnabled && !confirm(lang("Do you want to enable range select mode? All the songs between the previous click and the next one will be selected. Click again on the icon to deselect all the items in the range. Click again to disable this mode."))) return;
+                SelectHelper.multipleTrackSelectionInformation.trackId = undefined;
+                if (!SelectHelper.isRangeSelectModeEnabled) {
+                  SelectHelper.isRangeSelectModeEnabled = true;
+                } else if (!SelectHelper.deselectItems) {
+                  SelectHelper.deselectItems = true;
+                } else {
+                  SelectHelper.isRangeSelectModeEnabled = false;
+                  SelectHelper.deselectItems = false;
+                }
+              }}>
+                <img use:AutoRevokeUrl alt={lang("Enable range select mode")} src={IconsManager.getIconObjectUrl("selectobject")} style="width: 21px; height: 21px;">
+              </button>
+            </div>
             <div style="transform: translateY(1px)">
               <button class="emptyButton flex hcenter gap" onclick={() => {
                 SelectHelper.selectedItems.clear();
@@ -767,17 +784,3 @@
     {/if}
   </main>
 {/key}
-
-<style>
-  .bottomPlayerContainer {
-    position: fixed;
-    bottom: 25px;
-    width: 75vw;
-    left: calc(12.5vw - 21px);
-    padding: 20px;
-    border-radius: 36px;
-    border: 1px solid var(--text);
-    backdrop-filter: blur(8px) brightness(50%);
-    z-index: 5;
-  }
-</style>

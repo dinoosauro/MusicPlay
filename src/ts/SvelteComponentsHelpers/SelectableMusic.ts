@@ -8,7 +8,7 @@ const list = new Map();
  * @param info a string that identifies the passed HTMLElement. It's usually the trackId.
  */
 function addToList(node: Element, info?: string) {
-        list.set(info ?? `Auto-${crypto.randomUUID()}`, node);
+        list.set(info ?? `Track-${crypto.randomUUID()}`, node);
         return {
             destroy: () => {
                 list.delete(node);
@@ -26,5 +26,5 @@ export default {
     clearAllSelected: () => {
         for (const [_, item] of list) (item as HTMLElement).style.backgroundColor = "";
     },
-    list
+    list,
 }
