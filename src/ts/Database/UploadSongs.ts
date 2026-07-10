@@ -68,6 +68,7 @@ interface MetadataAddProps {
  * Save the passed songs in the database, by also reading their metadata
  */
 export async function SaveSongFileInDatabase({ songDb, metadataDb, albumArtDb }: DatabaseContainer, { file, fileName, fileHandle, lyricsFile, directoryId }: SaveSongFileInDatabaseProps, metadataToUpdate?: MetadataAddProps) {
+    navigator.storage && navigator.storage.persist && navigator.storage.persist();
     const metadata = await import("music-metadata");
     const id = crypto.randomUUID();
     const readMetadata = await metadata.parseBlob(file);

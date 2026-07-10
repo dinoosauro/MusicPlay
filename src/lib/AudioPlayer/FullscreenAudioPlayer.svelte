@@ -331,7 +331,7 @@
 
 </script>
 
-<div class="mainBodyHover opacity" bind:this={container} style="z-index: 10; opacity: 1">
+<div class="mainBodyHover opacity ensureClickableElements" bind:this={container} style="z-index: 10; opacity: 1">
     <div
         bind:this={albumArtBackground}
         class="backgroundImage opacity"
@@ -339,10 +339,10 @@
     >
         <img src={initAlbumArt} alt="Background art" />
     </div>
-    <div style="margin: 5px; position: fixed" bind:this={backButtonContainer}>
+    <div style="margin: 5px; position: fixed; z-index: 999" bind:this={backButtonContainer}>
         <BackButton></BackButton>
     </div>
-    <div class="flex wrap gap dynamicFlex forceMaxHeight" style="padding: 15px; height: 100%; gap: 25px;">
+    <div class="flex wrap gap dynamicFlex forceMaxHeight" style="padding: 15px; height: calc(100% - 30px); gap: 25px;">
             <div
                 class="flex adaptiveFlex wcenter adaptiveHcenter gap opacity"
                 style="flex-direction: column; opacity: 1;"

@@ -77,7 +77,7 @@
             if (title && titleContainer) {
                 titleContainer.textContent = title;
                 titleContainer.scrollTo({left: 0});
-                (img.parentElement as HTMLElement).style.display = "";
+                (img.parentElement as HTMLElement).style.display = "flex";
             };
             if ((albumName || author) && paragraphContainer) {
                 paragraphContainer.textContent = `${albumName} – ${author}`;
@@ -133,7 +133,7 @@
     if ((e.target as HTMLElement).tagName === "DIV") fullscreenCallback(img);
 }} bind:this={main}>
     <div class="albumArtBtns">
-        <button class="emptyButton" style="justify-self: center" onclick={() => fullscreenCallback(img)} title={lang("Album art")}>
+        <button class="emptyButton flex hcenter wcenter" style="width: 100%; display: flex" onclick={() => fullscreenCallback(img)} title={lang("Album art")}>
             <img bind:this={img} style="display: none;" alt={lang("Album art")}>
         </button>
         {#if isAudioBeingPlayed}

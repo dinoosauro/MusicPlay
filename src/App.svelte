@@ -153,6 +153,7 @@
     const params = new URLSearchParams(window.location.hash.substring(1));
     const id = params.get("pageShown");
     loadedMetadata = await LoadMetadata(databases, getSortingType(id || "albumView"));
+    navigator.storage && navigator.storage.persist && navigator.storage.persist();
     if (id === "albumView" || id === "trackView" || id === "artistsView" || id === "albumArtistsView" || id === "playlistsView") pageShown = id;
     haveSongsBeenAdded = true; // Since, if there are no entries, the length of loadedMetadata will be 0
     AudioManager.updateSongDb(databases.songDb, databases.albumArtDb, databases.songStatsDb, databases.metadataDb); // Update the databases used by the AudioManager
@@ -410,7 +411,7 @@
     {/if}
     <div
       class="circularButton emptyButton multiCircularButton"
-      style={`position: fixed; right: 15px; top: 15px${showFilterDropdownMenu || showMusicUploadOptions ? "; flex-direction: column; padding: 10px;" : ""}; max-width: calc(100vw - 55px); max-height: calc(100vh - 55px); z-index: 7`}
+      style={`position: fixed; right: calc(15px + env(safe-area-inset-right)); top: calc(15px + env(safe-area-inset-top))${showFilterDropdownMenu || showMusicUploadOptions ? "; flex-direction: column; padding: 10px;" : ""}; max-width: calc(100vw - 55px); max-height: calc(100vh - 55px); z-index: 7`}
     >
       {#if !showFilterDropdownMenu && !showMusicUploadOptions}
         <div

@@ -38,10 +38,10 @@
     }
     .dialog > div {
         position: fixed;
-        width: 70vw;
-        height: 80vh;
-        top: 10vh;
-        left: 15vw;
+        width: calc(70vw - env(safe-area-inset-left) - env(safe-area-inset-right));
+        height: calc(80vh - env(safe-area-inset-top));
+        top: calc(10vh + env(safe-area-inset-top));
+        left: calc(15vw + env(safe-area-inset-left));
         background-color: var(--card);
         overflow: scroll;
         border-radius: 12px;

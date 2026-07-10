@@ -287,7 +287,7 @@
 
 <div
     bind:this={main}
-    class="mainBodyHover"
+    class="mainBodyHover ensureClickableElements"
 >
     <div bind:this={albumArtBackground} class="backgroundImage opacity" style="background-color: var(--background);">
         {#if albumArt}
@@ -411,7 +411,7 @@
         {#if typeof showStatsDialog !== "undefined"}
             <SongStats songMetadata={songs[showStatsDialog]} songStats={songStats} closeCallback={() => (showStatsDialog = undefined)}></SongStats>
         {/if}
-        <div style="margin: 5px; position: fixed" bind:this={backButtonContainer}>
+        <div style="margin: 5px; position: fixed; z-index: 7" class="" bind:this={backButtonContainer}>
             <BackButton></BackButton>
         </div>
         <div style="height: 70px;"></div>

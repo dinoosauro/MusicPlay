@@ -57,7 +57,7 @@
     })
 </script>
 <Dialog closeFn={closeCallback}>
-    <div class="circularButtonContainer" style="position: fixed; right: calc(15vw + 15px); z-index: 2">
+    <div class="circularButtonContainer" style="position: fixed; right: calc(15vw + 15px + env(safe-area-inset-right)); z-index: 2">
         <button
     class="circularButton emptyButton flex hcenter gap" style="width: fit-content; display: flex;"
     onclick={() => closeCallback()}
