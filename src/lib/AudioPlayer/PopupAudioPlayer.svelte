@@ -165,8 +165,7 @@
     <div style="width: 100%;" class="miniHide">
         <div style="height: 10px"></div>
         <input class="maxWidth" style="width: 100%" onmousedown={() => (blockProgressUpdate = true)} onmouseup={() => (blockProgressUpdate = false)} ontouchstart={() => (blockProgressUpdate = true)} ontouchend={() => (blockProgressUpdate = false)} bind:this={progress} use:inputRangeStyle={() => {
-            const audio = (AudioManager.audio as HTMLAudioElement);
-            audio.currentTime = +progress.value;
+            AudioManager.audioInformation.updateCurrentTime(+progress.value);
         }} type="range" step="0.001">
         <span style="float: left;" bind:this={secondsLabel}></span>
         <span style="float: right" bind:this={durationLabel}></span>

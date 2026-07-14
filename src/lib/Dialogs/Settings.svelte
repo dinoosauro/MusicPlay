@@ -11,6 +11,11 @@
     import AudioManager from "../../ts/Player/AudioManager";
     import inputRangeStyle from "../../ts/SvelteComponentsHelpers/InputTypeRangeStyle";
     import OpenSource from "./OpenSource.svelte";
+    import Equalizer from "./Equalizer.svelte";
+
+    // iOS cannot play multiple audio tracks at the same time. Therefore, we'll need to change the audio playback method by using the Web Audio API. We'll notify the user about that, and we'll also need to refresh the webpage when the crossfade is enabled/disabled
+    const isIos = /(iPad|iPhone|iPod)/g.test(navigator.userAgent);
+    let prevCrossfade = Settings.crossfade.seconds;
     let {closeCallback, databases}: {
         /**
          * Function called to close the settings dialog
@@ -110,18 +115,45 @@
             {lang("Put the song/artist name below the controls if there's little space")}
         </label>
     </Card><br>
+        <Card secondCard={true}>
+            <h4>{lang("Playback rate")}</h4>
+            <label class="flex hcenter gap">
+                {lang("Default playback rate")}: <input use:inputRangeStyle type="range" min="0.25" max="4" bind:value={Settings.playback.standardPlaybackRate}>
+            </label><br>
+            <label class="flex hcenter gap">
+                <input type="checkbox" bind:checked={Settings.playback.adjustPitchForPlaybackRate} onchange={() => {
+                    if (AudioManager.audio) AudioManager.audio.preservesPitch = Settings.playback.adjustPitchForPlaybackRate;
+                }}>
+                {lang("Adjust the picth to compensate to the new playback rate")}
+            </label>
+        </Card><br>
+    <Equalizer></Equalizer><br>
+    {#if true}
     <Card secondCard={true}>
-        <h4>{lang("Playback rate")}</h4>
+        <h4>{lang("Crossfade")}:</h4>
+        {#if isIos}
+        <p>
+            <strong>{lang("Warning")}:</strong> {lang("Due to iOS restrictions, enabling crossfade between tracks require using a different audio decoding method. If you face any issues, disable crossfade. The webpage will be automatically refreshed if you enable/disable crossfade.")}
+        </p>
+        {/if}
         <label class="flex hcenter gap">
-            {lang("Default playback rate")}: <input use:inputRangeStyle type="range" min="0.25" max="4" bind:value={Settings.playback.standardPlaybackRate}>
+            {lang("Transition between tracks (in seconds)")}: <input type="number" bind:value={Settings.crossfade.seconds} onchange={() => {
+                if (isIos && ((Settings.crossfade.seconds > 0 && prevCrossfade === 0) || (Settings.crossfade.seconds === 0 && prevCrossfade > 0) )) {
+                    window.location.reload();
+                }
+                prevCrossfade = Settings.crossfade.seconds;
+            }}>
         </label><br>
         <label class="flex hcenter gap">
-            <input type="checkbox" bind:checked={Settings.playback.adjustPitchForPlaybackRate} onchange={() => {
-                if (AudioManager.audio) AudioManager.audio.preservesPitch = Settings.playback.adjustPitchForPlaybackRate;
-            }}>
-            {lang("Adjust the picth to compensate to the new playback rate")}
+            <input type="checkbox" bind:checked={Settings.crossfade.isExponential}>{lang("Make the transition smoother (non-linear)")}
+        </label><br>
+        <label class="flex hcenter gap">
+            {lang("Exponential curve")}: <input defaultValue={(Settings.crossfade.exponential * -1) - 2} type="range" use:inputRangeStyle={(e) => {
+                Settings.crossfade.exponential = (+(e.target as HTMLInputElement).value * -1) - 2;
+            }}  min="0.25" max="6" step="0.25">
         </label>
     </Card><br>
+    {/if}
     <Card secondCard={true}>
         <h4>{lang("Application theme")}:</h4>
         <p>{lang("Here you can change all the colors and values used by the application. You can also customize the font and the CSS blur styling. Note that, if the font you've put doesn't load, you might need to disable your browser's privacy protection. The sliders below the color inputs permit to change the opacity of the property")}.</p>

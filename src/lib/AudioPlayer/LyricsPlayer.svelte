@@ -10,7 +10,6 @@
     import { lang } from "../../ts/SvelteComponentsHelpers/Language";
 
     let { lyrics }: { lyrics?: syncedLyricsObj[] | string } = $props();
-
     interface LyricsAnimationInfo {
         start: number;
         end: number;
@@ -54,15 +53,15 @@
      */
     let currentScrollElement: HTMLElement | undefined;
     onMount(() => {
+        console.log("Setting interval...");
         const interval = setInterval(() => {
-            let {currentTime, duration} = AudioManager.audio ?? {};
+            let {currentTime, duration} = AudioManager.audioInformation ?? {};
             if (typeof currentTime === "undefined" || typeof duration === "undefined") return;
             currentTime *= 1000; // Update in ms
             for (const [element, data] of lyricsMap) {
                 // Let's first update some properties
                 if (data.generalEnd === -1) data.generalEnd = duration * 1000; 
                 if (data.end === -1) data.end = duration * 1000; 
-
                 const isDifferentWordButSameLine = typeof data.generalStart !== "undefined" && typeof data.generalEnd !== "undefined" && currentTime > data.generalStart && currentTime < data.generalEnd;
                 const isNotInRange = ((currentTime > data.start && currentTime > data.end) || (currentTime < data.start));
 
@@ -91,7 +90,9 @@
                         element.classList.remove("lyricsAnimation");
                         if (!isDifferentWordButSameLine && data.isWord) element.classList.remove("currentLineColor");
                     }
-                if ((isDifferentWordButSameLine && currentTime > data.end) || !data.isWord) element.classList.add("currentLineColor"); // If the user changes the song current time by clicking the text
+                if ((isDifferentWordButSameLine && currentTime > data.end) || !data.isWord) {
+                    element.classList.add("currentLineColor"); // If the user changes the song current time by clicking the text
+                }
                 element.classList.add("currentLine");
             } 
             }
@@ -121,7 +122,7 @@
                         <button
                             class="emptyButton" style="display: inline; margin: 0px; padding-left: 0px; padding-right: 3px;"
                             onclick={() => {
-                                AudioManager.audio && (AudioManager.audio.currentTime = word.start / 1000 + 0.01);
+                                AudioManager.audioInformation.updateCurrentTime(word.start / 1000 + 0.01);
                                 currentScrollElement = undefined;
                             }}
                             use:textVisibilityAnimation={{
@@ -151,7 +152,7 @@
                         class="emptyButton maxWidth"
                         style={typeof lyricsVerse.artistNumber !== "undefined" ? `text-align: ${lyricsVerse.artistNumber % 3 === 0 ? "left" : lyricsVerse.artistNumber % 3 === 1 ? "right" : "center"}` : ""}
                         onclick={() => {
-                            AudioManager.audio && (AudioManager.audio.currentTime = lyricsVerse.start / 1000 + 0.01);
+                            AudioManager.audioInformation.updateCurrentTime(lyricsVerse.start / 1000 + 0.01)
                             currentScrollElement = undefined;
                         }}
                         use:textVisibilityAnimation={{

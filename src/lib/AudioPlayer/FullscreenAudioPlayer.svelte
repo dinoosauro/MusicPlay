@@ -100,6 +100,10 @@
             : AudioManager.currentMetadata?.metadata.embeddedLyrics,
     );
     /**
+     * A random identifier for the current lyrics. This must be changed every time the `currentLyrics` object changes, so that the Lyrics component is re-rendered.
+     */
+    let currentLyricsKey = $state(crypto.randomUUID());
+    /**
      * If lyrics are available
      */
     let availableLyrics = $state((typeof currentLyrics === "string" && currentLyrics.trim() !== "") || (typeof currentLyrics === "object" && currentLyrics.length !== 0))
@@ -129,6 +133,7 @@
         alreadyFetchedLrcLib = true;
         if (typeof lyrics === "string" || lyrics.length !== 0) { // Lyrics found
             currentLyrics = lyrics;
+            currentLyricsKey = crypto.randomUUID();
             if (typeof lyrics === "string") {
                 tempMetadata.metadata.embeddedLyrics = lyrics;
                 if (AudioManager.currentMetadata) AudioManager.currentMetadata.metadata.embeddedLyrics = lyrics;
@@ -276,6 +281,7 @@
                 if (Settings.lyrics.useLrcLibByDefault) fetchLyrics(JSON.parse(JSON.stringify(AudioManager.currentMetadata)));
                 } else availableLyrics = true;
                 currentLyrics = lyrics ?? undefined;
+                currentLyricsKey = crypto.randomUUID();
                 if (typeof lyrics === "string" && Settings.lyrics.useLrcLibIfLyricsArentSynced) fetchLyrics(JSON.parse(JSON.stringify(AudioManager.currentMetadata)));
             }
         }
@@ -424,16 +430,14 @@
                             onmouseup={() => (blockProgressUpdate = false)}
                             ontouchstart={() => (blockProgressUpdate = true)}
                             ontouchend={() => (blockProgressUpdate = false)}
-                            defaultValue={AudioManager.audio?.currentTime}
+                            defaultValue={AudioManager.audioInformation?.currentTime}
                             max={AudioManager.audio?.duration}
                             onchange={() => {
                             }}
                             bind:this={progress}
                             type="range"
                             use:inputRangeStyle={() => {
-                                const audio =
-                                    AudioManager.audio as HTMLAudioElement;
-                                audio.currentTime = +progress.value;
+                                AudioManager.audioInformation.updateCurrentTime(+progress.value)
                             }}
                             step="0.001"
                         />
@@ -522,7 +526,9 @@
         <div bind:this={rightDivContainer} class="opacity" out:fade={{duration: 200, easing: cubicInOut}} in:fade={{duration: 200, easing: cubicInOut}}>
                     {#if availableLyrics && showLyricsPlayer}
                     <div>
-                        <LyricsPlayer lyrics={currentLyrics}></LyricsPlayer>
+                        {#key currentLyricsKey}
+                            <LyricsPlayer lyrics={currentLyrics}></LyricsPlayer>
+                        {/key}
                     </div>
                     {:else}
                     <div>

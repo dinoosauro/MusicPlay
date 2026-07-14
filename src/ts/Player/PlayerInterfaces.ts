@@ -61,3 +61,13 @@ export interface InfoProps {
    * How the `[string, MetadataSource[]][]` object is divided
    */
 export type PossibleSortingOptions = "album" | "authors" | "albumauthors" | "none";
+
+/**
+ * Information used to build the equalizer
+ */
+export interface EqualizerInfo {
+    from: number,
+    to: number,
+    db: number,
+    type: BiquadFilterType,
+}

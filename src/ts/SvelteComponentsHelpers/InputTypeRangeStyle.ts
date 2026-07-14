@@ -3,12 +3,26 @@
  * 
  * This function creates a container div, automatically appended to the parent element of the slider, and adds all the custom events so that the user can have a decently-functioning scroller also on Safari.
  * @param range the input range element to update
- * @param inputEvent the event to run when the user changes the selection.
+ * @param inputInfo the event to run when the user changes the selection. Also an object can be passed to customize the input range
  */
-export default function inputRangeStyle(range: HTMLInputElement, inputEvent?: (e: Event) => void) {
+export default function inputRangeStyle(range: HTMLInputElement, inputInfo?: ((e: Event) => void) | {
+    inputEvent: (e: Event) => void,
+    /**
+     * If true, the events of the slider will be set so that the item can be scrolled vertically
+     */
+    isVertical?: boolean,
+    /**
+     * If true, the item will be rotated of 180 degrees, and the events will be updated so that the scroll will still feel natural.
+     */
+    isRotated?: boolean
+}) {
+    const inputEvent = typeof inputInfo === "function" ? inputInfo : inputInfo ? inputInfo.inputEvent : undefined;
+    const isVertical = typeof inputInfo === "object" && inputInfo.isVertical;
+    const isRotated = typeof inputInfo === "object" && inputInfo.isRotated;
     // Let's create the container class, so that we can add the different color at the left
     const container = document.createElement("div");
-    container.classList.add("slider");
+    container.classList.add("slider", isVertical ? "verticalSlider" : "horizontalSlider");
+    if (isRotated) container.classList.add("rotatedSlider");
     range.parentElement?.insertBefore(container, range); // Let's add it in the same position of the input[type=range] so that we won't alteer the layout styling
     container.append(range);
     /**
@@ -33,7 +47,8 @@ export default function inputRangeStyle(range: HTMLInputElement, inputEvent?: (e
             if (e.touches && e.touches.length !== 1) return;
             const rect = container.getBoundingClientRect();
             // @ts-ignore
-            const percentage = (((e.touches ? e.touches[0] : e).clientX - rect.left) * 100) / rect.width; 
+            let percentage = (((e.touches ? e.touches[0] : e)[`client${isVertical ? "Y" : "X"}`] - rect[isVertical ? "top" : "left"]) * 100) / rect[isVertical ? "height" : "width"]; 
+            if (isRotated) percentage = 100 - percentage;
             range.value = (percentage * +range.max / 100).toString();
             range.dispatchEvent(new Event("input"));
         })

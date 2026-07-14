@@ -360,7 +360,7 @@ input[type=range] {
   appearance: none;
   position: absolute;
   height: 100%;
-  width: var(--currentsize);
+  width: 100%;
   background-color: var(--secondtext);
   content: "";
   top: 0px;
@@ -370,6 +370,16 @@ input[type=range] {
   interpolate-size: allow-keywords;
   z-index: 1;
   pointer-events: none;
+}
+.slider.horizontalSlider::before {
+    width: var(--currentsize);
+}
+.slider.verticalSlider::before {
+    height: var(--currentsize);
+    border-bottom-right-radius: 12px;
+}
+.slider.rotatedSlider {
+  rotate: 180deg;
 }
 
 .slider {
@@ -409,6 +419,6 @@ input[type=range]::-moz-range-thumb {
   z-index: 5;
 }
 
-label.flex.hcenter.gap > input, label.flex.hcenter.gap > select {
+label.flex.hcenter.gap > input:not([type=checkbox]), label.flex.hcenter.gap > select {
   width: 100%;
 }

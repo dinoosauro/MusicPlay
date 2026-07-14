@@ -1,3 +1,5 @@
+import type { EqualizerInfo } from "./Player/PlayerInterfaces";
+
 let obj = {
     lyrics: {
         useLrcLibByDefault: false,
@@ -18,8 +20,15 @@ let obj = {
     },
     cssColors: {} as {[key: string]: string},
     language: navigator.language.substring(0, 2) as string | undefined,
-    customArtColors: ["#4a7856", "#4a6f78", "#524a78", "#784a6d", "#784a52", "#785f4a", "#78704a"]
+    customArtColors: ["#4a7856", "#4a6f78", "#524a78", "#784a6d", "#784a52", "#785f4a", "#78704a"],
+    equalizer: [] as EqualizerInfo[],
+    crossfade: {
+        seconds: 0,
+        isExponential: true,
+        exponential: -4
+    }
 }
+
 
 const json = JSON.parse(localStorage.getItem("MusicPlayer-Settings") ?? "{}");
 obj = UpdateJsonProperties(json, obj);
