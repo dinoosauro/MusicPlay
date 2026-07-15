@@ -14,7 +14,11 @@ interface TriggerTransitionProps {
     /**
      * Custom z-index for the temp image
      */
-    zIndex?: number
+    zIndex?: number,
+    /**
+     * If both this and `appendToBody` are true, the transition image will be appended to the body of the Picture-in-Picture window instead of the main one.
+     */
+    usePiPAsOutputWindow?: boolean,
 }
 
 
@@ -22,7 +26,7 @@ const obj = {
     /**
      * Run the transition
      */
-    triggerTransition: async ({albumArts, newSource, appendToBody, zIndex}: TriggerTransitionProps) => {
+    triggerTransition: async ({albumArts, newSource, appendToBody, zIndex, usePiPAsOutputWindow}: TriggerTransitionProps) => {
         /**
          * An array of all the promises, that'll be resolved after the first transition has been done
          */
@@ -49,7 +53,7 @@ const obj = {
                 const originalRect = element.getBoundingClientRect();
                 for (const type of ["top", "left"]) img.style[type as "left"] = `${originalRect[type as "left"]}px`;
             }
-            (appendToBody ? document.body : element.parentElement)?.append(img);
+            (appendToBody ? (usePiPAsOutputWindow ? window.documentPictureInPicture?.window?.document.body : document.body) : element.parentElement)?.append(img);
             img.src = newSource;
             img.style.pointerEvents = "none";
             await new Promise<void>(res => img.onload = () => res());

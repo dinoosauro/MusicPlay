@@ -85,6 +85,9 @@
         </label><br>
         <label class="flex hcenter gap">
             <input type="checkbox" bind:checked={Settings.lyrics.useLrcLibIfLyricsArentSynced}>{lang("Automatically fetch lyrics if the uploaded ones aren't synced")}
+        </label><br>
+        <label class="flex hcenter gap">
+            <input type="checkbox" bind:checked={Settings.lyrics.informOfLrcLibUsage}>{lang("Show a pop-up every time a request is made to LRCLib")}
         </label>
     </Card><br>
     <Card secondCard={true}>
@@ -113,6 +116,12 @@
                 settingsUpdate.updateFloatingPlayerMiniValue && settingsUpdate.updateFloatingPlayerMiniValue();
             }}>
             {lang("Put the song/artist name below the controls if there's little space")}
+        </label><br>
+        <label class="flex hcenter gap">
+            <input type="checkbox" bind:checked={Settings.miniPlayer.showAdvancedControls} onchange={() => {
+                settingsUpdate.updateFloatingPlayerShuffleRepeatVisibility && settingsUpdate.updateFloatingPlayerShuffleRepeatVisibility();
+            }}>
+            {lang("Show the shuffle and repeat controls also in the floating player")}
         </label>
     </Card><br>
         <Card secondCard={true}>

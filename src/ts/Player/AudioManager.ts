@@ -681,7 +681,7 @@ const obj = {
         if (obj.audioContext.queuePosition !== (obj.audioContext.queue.length - 1)) { // There is at least one more item in the queue
             switch (obj.audioContext.repeat) {
                 case "loopSingle": {
-                    if (!shouldStop) queueManager.playAgain();
+                    if (!shouldStop) queueManager.playAgain(isFromUserInteraction);
                     break;
                 }
                 default: {
@@ -693,7 +693,7 @@ const obj = {
         } else { // Finished the queue automatically added by the application. 
             switch (obj.audioContext.repeat) {
                 case "loopSingle": {
-                    if (!shouldStop) queueManager.playAgain();
+                    if (!shouldStop) queueManager.playAgain(isFromUserInteraction);
                     break;
                 }
                 case "loop": {
@@ -723,9 +723,22 @@ const queueManager = {
     /**
      * Play again the same track
      */
-    playAgain() {
-        (obj.audio as HTMLAudioElement).currentTime = 0;
-        obj.audio?.play();
+    playAgain: async (isFromUserInteraction?: boolean) => {
+        if (Settings.crossfade.seconds > 0) { // Since the crossfade transition must be done, we'll need to play the track just like if it were a new track.
+            if (!obj.currentMetadata) return;
+            obj.playAudio({file: await GetAudioFile({ songDb, songId: obj.currentMetadata.trackId, metadataDb}), metadata: obj.currentMetadata, isFromUserInteraction, albumArt: await GetAlbumArt({
+                db: albumArtDb, 
+                id: GetAlbumArtId({
+                    albumAuthor: obj.currentMetadata.metadata.albumArtist,
+                    albumName: obj.currentMetadata.metadata.album,
+                    year: obj.currentMetadata.metadata.year
+                }), name: obj.currentMetadata.metadata.album
+            })
+        });
+        } else {
+            obj.audioInformation.updateCurrentTime(0);
+            obj.audio?.play();
+        }
     },
     /**
      * Play a new audio file either from the queue, or from the previously-played elements

@@ -422,3 +422,35 @@ input[type=range]::-moz-range-thumb {
 label.flex.hcenter.gap > input:not([type=checkbox]), label.flex.hcenter.gap > select {
   width: 100%;
 }
+
+    .mainFlexGap {
+        gap: 25px
+    }
+   @media screen and (max-width: 470px) {
+    .dynamicFlex {
+        flex-direction: column;
+    }
+    .albumArtBtns {
+        display: flex;
+        gap: 5px;
+    }
+    .mainFlexGap {
+        gap: 5px;
+    }
+    .miniHide {
+        display: none;
+    }
+    .dynamicGap {
+        gap: 2px !important;
+    }
+   }
+   @media (max-width: 400px) {
+    .hideIfSmall {
+        display: none;
+    }
+   }
+  @media (max-width: 200px) {
+    .hideIfReallySmall {
+        display: none;
+    }
+  }

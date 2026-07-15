@@ -12,7 +12,7 @@
   import type { InfoProps, MetadataSource, PlaylistContainer, PossibleSortingOptions } from "./ts/Player/PlayerInterfaces";
   import AlbumViewer from "./lib/AlbumViewer.svelte";
   import AnimationHandler from "./ts/Animations/ImageAnimationHandler";
-  import { onMount } from "svelte";
+  import { mount, onMount, unmount } from "svelte";
   import { fullscreenObject, mediaPlayerObject } from "./ts/Animations/CrossComponentAnimationsInfo";
   import { imageMap } from "./ts/SvelteComponentsHelpers/GlobalInformation";
   import type { OpacityChange, PopupScalingInfo } from "./ts/Animations/AnimationTypes";
@@ -691,7 +691,7 @@
           style="opacity: 1;"
           bind:this={audioPlaybackController}
         >
-          <AudioPlayer fullscreenCallback={(img) => {
+          <AudioPlayer metadataDb={databases.metadataDb} albumArtDb={databases.albumArtDb} fullscreenCallback={(img) => {
             showFullscreenPlayer = img;
             PopupPlayerAnimationHandler.disappearElement(audioPlaybackController);
           }}></AudioPlayer>
@@ -801,4 +801,4 @@
       {/if}
     {/if}
   </main>
-{/key}
+  {/key}

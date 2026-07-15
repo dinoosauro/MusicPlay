@@ -26,5 +26,6 @@ export function addImageToMap(image: HTMLImageElement, id: string) {
  * Callbacks from the Settings dialog to other parts of the application
  */
 export let settingsUpdate = {
-    updateFloatingPlayerMiniValue: undefined as (() => void) | undefined
+    updateFloatingPlayerMiniValue: undefined as (() => void) | undefined,
+    updateFloatingPlayerShuffleRepeatVisibility: undefined as (() => void) | undefined
 }

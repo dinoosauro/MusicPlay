@@ -3,7 +3,8 @@ import type { EqualizerInfo } from "./Player/PlayerInterfaces";
 let obj = {
     lyrics: {
         useLrcLibByDefault: false,
-        useLrcLibIfLyricsArentSynced: false
+        useLrcLibIfLyricsArentSynced: false,
+        informOfLrcLibUsage: true
     },
     mediaSession: {
         actionForNextPrevButtons: "next",
@@ -12,7 +13,8 @@ let obj = {
         customOffset: 10
     },
     miniPlayer: {
-        enableMiniMode: true
+        enableMiniMode: true,
+        showAdvancedControls: false
     },
     playback: {
         adjustPitchForPlaybackRate: true,

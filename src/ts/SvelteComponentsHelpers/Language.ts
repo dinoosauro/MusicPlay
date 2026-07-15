@@ -272,7 +272,13 @@ const availableTranslations = new Map<string, TranslationProps>([
     ["Value", {it: "Valore"}],
     ["Reset", {it: "Reimposta"}],
     ["Delete", {it: "Elimina"}],
-    ["Add frequency", {it: "Aggiungi frequenza"}]
+    ["Add frequency", {it: "Aggiungi frequenza"}],
+    ["Enable/disable Picture-in-Picture mode", {it: "Abilita/disabilita modalità Picture-in-Picture"}],
+    ["Fetching lyrics of", {it: "Ottengo testo di"}],
+    ["on LRCLib", {it: "su LRCLib"}],
+    ["Show the shuffle and repeat controls also in the floating player", {it: "Mostra i pulsanti della riproduzione causale e della ripetizione della traccia anche nel player fluttuante"}],
+    ["Tip: click on the album art of the Picture-in-Picture player to view the lyrics.", {it: "Suggerimento: clicca sulla copertina del player Picture-in-Picture per visualizzare i testi."}],
+    ["Show a pop-up every time a request is made to LRCLib", {it: "Mostra un pop-up ogni volta che una richiesta viene eseguita a LRCLib"}]
 ]);
 
 /**

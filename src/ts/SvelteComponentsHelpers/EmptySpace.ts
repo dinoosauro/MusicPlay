@@ -34,8 +34,10 @@ export function registerEmptySpace(div: HTMLElement) {
 /**
  * Update the Element used for the floating player
  * @param div the container of the floating player
+ * @param skip if the current container shouldn't be treated as a floating player (ex: if the pop-up component is called from the Picture-in-Picture mode)
  */
-export function registerFloatingPlayerDiv(div: HTMLDivElement) {
+export function registerFloatingPlayerDiv(div: HTMLDivElement, skip?: boolean) {
+    if (skip) return;
     floatingPlayerDiv = div;
     resizeObserver.disconnect();
     resizeObserver.observe(div);

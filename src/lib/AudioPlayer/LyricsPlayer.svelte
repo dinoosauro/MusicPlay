@@ -9,7 +9,7 @@
     import AutoRevokeUrl from "../../ts/SvelteComponentsHelpers/AutoRevokeUrl";
     import { lang } from "../../ts/SvelteComponentsHelpers/Language";
 
-    let { lyrics }: { lyrics?: syncedLyricsObj[] | string } = $props();
+    let { lyrics, customHeight }: { lyrics?: syncedLyricsObj[] | string, customHeight?: string } = $props();
     interface LyricsAnimationInfo {
         start: number;
         end: number;
@@ -53,7 +53,6 @@
      */
     let currentScrollElement: HTMLElement | undefined;
     onMount(() => {
-        console.log("Setting interval...");
         const interval = setInterval(() => {
             let {currentTime, duration} = AudioManager.audioInformation ?? {};
             if (typeof currentTime === "undefined" || typeof duration === "undefined") return;
@@ -105,7 +104,7 @@
 </script>
 
 {#if lyrics}
-    <div style="overflow: auto; position: relative" class="dynamicHeight" onscrollend={() => (disableBlockScrollListener = false)} onscroll={(e) => {
+    <div style={`overflow: auto; position: relative;${customHeight ? ` height: ${customHeight}` : ""}`} class={typeof customHeight === "string" ? undefined : "dynamicHeight"} onscrollend={() => (disableBlockScrollListener = false)} onscroll={(e) => {
         if (!disableBlockScrollListener) blockScroll = true; 
     }} bind:this={container}>
         {#if typeof lyrics === "string"}
