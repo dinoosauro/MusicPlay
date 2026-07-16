@@ -71,3 +71,10 @@ export interface EqualizerInfo {
     db: number,
     type: BiquadFilterType,
 }
+
+export interface EqualizerPreset {
+    db: [number, number, number, number, number, number, number, number, number, number],
+    default?: boolean,
+    name: string,
+    id: string
+}

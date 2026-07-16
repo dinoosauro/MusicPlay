@@ -278,7 +278,12 @@ const availableTranslations = new Map<string, TranslationProps>([
     ["on LRCLib", {it: "su LRCLib"}],
     ["Show the shuffle and repeat controls also in the floating player", {it: "Mostra i pulsanti della riproduzione causale e della ripetizione della traccia anche nel player fluttuante"}],
     ["Tip: click on the album art of the Picture-in-Picture player to view the lyrics.", {it: "Suggerimento: clicca sulla copertina del player Picture-in-Picture per visualizzare i testi."}],
-    ["Show a pop-up every time a request is made to LRCLib", {it: "Mostra un pop-up ogni volta che una richiesta viene eseguita a LRCLib"}]
+    ["Show a pop-up every time a request is made to LRCLib", {it: "Mostra un pop-up ogni volta che una richiesta viene eseguita a LRCLib"}],
+    ["Start from a preset", {it: "Inizia da un preset"}],
+    ["Pick a preset", {it: "Seleziona un preset"}],
+    ["Show less slider controls", {it: "Mostra meno opzioni"}],
+    ["Pick a name for the new preset", {it: "Scegli un nome per il nuovo preset"}],
+    ["Save as custom preset", {it: "Salva come preset personalizzato"}]
 ]);
 
 /**

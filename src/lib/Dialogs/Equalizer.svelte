@@ -5,6 +5,9 @@
     import inputRangeStyle from "../../ts/SvelteComponentsHelpers/InputTypeRangeStyle";
     import { lang } from "../../ts/SvelteComponentsHelpers/Language";
     import Card from "../Card.svelte";
+    import type { EqualizerPreset } from "../../ts/Player/PlayerInterfaces";
+    import AutoRevokeUrl from "../../ts/SvelteComponentsHelpers/AutoRevokeUrl";
+    import IconsManager from "../../ts/Icons/IconsManager";
 
     // Variables used to add a new frequency to the equalizer
     let newFrom = 60;
@@ -20,10 +23,77 @@
     /**
      * For easy mode, the suggested Hz to edit
      */
-    const suggestedPicks = [60, 150, 400, 1000, 2400, 15000];
-    let easyMode = $state(true);
+    let easyMode = $state(Settings.settingsComponentOptions.enableEasyModeInEqMode);
+    /**
+     * If true, only five sliders will be displayed instead of ten. The user won't be able to create custom presets or to apply the default ones.
+     */
+    let showLessControlsInEasyMode = $state(Settings.settingsComponentOptions.showLessControlsInEqEasyMode);
+    const suggestedPicks = $derived(showLessControlsInEasyMode ? [60, 150, 400, 1000, 2400, 15000] : [31, 63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000, 20000]);
     let easyModePicks = $state(suggestedPicks.slice(0, -1).map((val, i) => Settings.equalizer.find(j => j.from === suggestedPicks[i] && j.to === suggestedPicks[i + 1])?.db ?? 0));
-
+    // @ts-ignore - Copied from VLC Android's equalizer
+    const standardPresets: EqualizerPreset[] = [{
+        name: "Flat",
+        db: [0,0,0,0,0,0,0,0,0,0],
+    }, {
+        name: "Classical",
+        db: [0,0,0,0,0,0,-7,-7,-7,-9],
+    }, {
+        name: "Club",
+        db: [0,0,8,5,5,5,3,0,0,0],
+    }, {
+        name: "Dance",
+        db: [9,7,2,0,0,-5,-7,-7,0,0],
+    }, {
+        name: "Full Bass",
+        db: [-8,9,9,5,1,-4,-8,-10,-11,-11],
+    }, {
+        name: "Full Bass and Trebble",
+        db: [7,5,0,-7,-4,1,8,11,12,12],
+    }, {
+        name: "Full trebble",
+        db: [-9,-9,-9,-4,2,11,16,16,16,16],
+    }, {
+        name: "Headphones",
+        db: [4,11,5,-3,-2,1,4,9,12,14],
+    }, {
+        name: "Large Hall",
+        db: [10,10,5,5,0,-4,-4,-4,0,0],
+    }, {
+        name: "Live",
+        db: [-4,0,4,5,5,5,4,2,2,2],
+    }, {
+        name: "Party",
+        db: [7,7,0,0,0,0,0,0,7,7],
+    }, {
+        name: "Pop",
+        db: [-1,4,7,8,5,0,-2,-2,-1,-1],
+    }, {
+        name: "Reggae",
+        db: [0,0,0,-5,0,6,6,0,0,0],
+    }, {
+        name: "Rock",
+        db: [8,4,-5,-8,-3,4,8,11,11,11],
+    }, {
+        name: "Ska",
+        db: [-2,-4,-4,0,4,5,8,9,11,9],
+    }, {
+        name: "Soft",
+        db: [4,1,0,-2,0,4,8,9,11,12],
+    }, {
+        name: "Soft Rock",
+        db: [4,4,2,0,-4,-5,-3,0,2,8],
+    }, {
+        name: "Techno",
+        db: [8,5,0,-5,-4,0,8,9,9,8],
+    }].map(i => {return {...i, default: true, id: crypto.randomUUID()}});
+    /**
+     * The array that contains all the available presets for easy mode
+     */
+    let availablePresets = $state([...standardPresets, ...Settings.customEqPresets]);
+    /**
+     * The ID of the currently-selected preset
+     */
+    let selectedPreset = $state("no");
     /**
      * Update the equalizer settings also in the currently-playing track
      * @param position the position in the equalizer array of the item to edit
@@ -86,10 +156,47 @@
     <h4>{lang("Equalizer")}:</h4>
     <p>{lang("Create your own equalizer: pick the range of frequencies to edit and choose the effect to apply")}.</p>
     <label class="flex hcenter gap">
-        <input type="checkbox" bind:checked={easyMode}>{lang("Enable easy mode")}
+        <input type="checkbox" bind:checked={easyMode} onchange={() => {
+            Settings.settingsComponentOptions.enableEasyModeInEqMode = easyMode;
+        }}>{lang("Enable easy mode")}
     </label><br>
     {#if easyMode}
     <Card>
+        {#if !showLessControlsInEasyMode}
+        <label class="flex hcenter gap">
+            {lang("Start from a preset")}: <select style="background-color: var(--secondcard);" bind:value={selectedPreset} onchange={() => {
+                const items = easyModeRangeContainer.querySelectorAll("input[type=range]");
+                const findItem = availablePresets.find(i => i.id === selectedPreset);
+                if (!findItem) return;
+                for (let i = 0; i < items.length; i++) {
+                    (items[i] as HTMLInputElement).value = `${30 + findItem.db[i]}`;
+                    items[i].dispatchEvent(new Event("input"));
+                    items[i].dispatchEvent(new Event("change"));
+                }
+            }}>
+                <option disabled value="no">{lang("Pick a preset")}</option>
+                {#each availablePresets as preset}
+                    <option value={preset.id}>{preset.name}</option>
+                {/each}
+            </select>
+            {#if selectedPreset !== "no" && !availablePresets.find(i => i.id === selectedPreset)?.default}
+                <button class="emptyButton flex hcenter gap" onclick={() => {
+                    const settingsIndex = Settings.customEqPresets.findIndex(i => i.id === selectedPreset);
+                    const presetIndex = availablePresets.findIndex(i => i.id === selectedPreset);
+                    settingsIndex !== -1 && Settings.customEqPresets.splice(settingsIndex, 1);
+                    presetIndex !== -1 && availablePresets.splice(presetIndex, 1);
+                }}>
+                    <img src={IconsManager.getIconObjectUrl("delete")} class="icon" use:AutoRevokeUrl alt={lang("Delete preset")}>
+                </button>
+            {/if}
+        </label><br>
+        {/if}
+        <label class="flex hcenter gap">
+            <input class="fromFirstCard" type="checkbox" bind:checked={showLessControlsInEasyMode} onchange={() => {
+                Settings.settingsComponentOptions.showLessControlsInEqEasyMode = showLessControlsInEasyMode;
+            }}>
+            {lang("Show less slider controls")}
+        </label><br>
         <div bind:this={easyModeRangeContainer} class="flex gap" style="overflow: auto; gap: 30px">
             {#each [...suggestedPicks].slice(0, -1) as possiblePick, i}
                 <label>
@@ -124,7 +231,23 @@
                 </label>
             {/each}
         </div><br>
-                    <button class="emptyButton maxWidth" onclick={() => {
+        <div class="flex hcenter gap">
+            {#if !showLessControlsInEasyMode}
+            <button class="emptyButton maxWidth" onclick={() => {
+                const name = prompt(lang("Pick a name for the new preset"));
+                if (!name) return;
+                const eqObj: EqualizerPreset = {
+                    name,
+                    id: crypto.randomUUID(),
+                    db: Array.from(easyModeRangeContainer.querySelectorAll("input[type=range]")).map(i => +(i as HTMLInputElement).value - 30) as [number, number, number, number, number, number, number, number, number, number]
+                };
+                Settings.customEqPresets.push(eqObj);
+                availablePresets.push(eqObj);
+            }}>
+                <u>{lang("Save as custom preset")}</u>
+            </button>
+            {/if}
+            <button class="emptyButton maxWidth" onclick={() => {
                 for (const item of easyModeRangeContainer.querySelectorAll("input[type=range]")) {
                     (item as HTMLInputElement).value = "30";
                     item.dispatchEvent(new Event("input"));
@@ -133,6 +256,7 @@
             }}>
                 <u>{lang("Reset")}</u>
             </button><br>
+        </div>
     </Card>
     {:else}
     <Card>

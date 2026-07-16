@@ -1,4 +1,4 @@
-import type { EqualizerInfo } from "./Player/PlayerInterfaces";
+import type { EqualizerInfo, EqualizerPreset } from "./Player/PlayerInterfaces";
 
 let obj = {
     lyrics: {
@@ -24,6 +24,11 @@ let obj = {
     language: navigator.language.substring(0, 2) as string | undefined,
     customArtColors: ["#4a7856", "#4a6f78", "#524a78", "#784a6d", "#784a52", "#785f4a", "#78704a"],
     equalizer: [] as EqualizerInfo[],
+    customEqPresets: [] as EqualizerPreset[],
+    settingsComponentOptions: {
+        showLessControlsInEqEasyMode: false,
+        enableEasyModeInEqMode: true
+    },
     crossfade: {
         seconds: 0,
         isExponential: true,
