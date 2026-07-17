@@ -59,6 +59,9 @@ main {
   flex: 1
 }
 
+*::selection {
+  background: transparent;
+}
 
 .emptyButton {
   appearance: none;

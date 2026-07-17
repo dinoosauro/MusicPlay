@@ -283,7 +283,8 @@ const availableTranslations = new Map<string, TranslationProps>([
     ["Pick a preset", {it: "Seleziona un preset"}],
     ["Show less slider controls", {it: "Mostra meno opzioni"}],
     ["Pick a name for the new preset", {it: "Scegli un nome per il nuovo preset"}],
-    ["Save as custom preset", {it: "Salva come preset personalizzato"}]
+    ["Save as custom preset", {it: "Salva come preset personalizzato"}],
+    ["Avoid copying the audio file in the database if possible. If enabled, the browser might ask you the permission before playing an audio file.", {it: "Evita di copiare il file audio nel database se possibile. Se quest'opzione è abilitata, il browser potrebbe chiedere l'autorizzazione prima di riprodurre un file."}]
 ]);
 
 /**

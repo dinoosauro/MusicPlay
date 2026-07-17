@@ -6,6 +6,7 @@ import ParseLrcFiles from "../DataFetcher/ParseLrcFiles";
 import type { MetadataSource, PossibleSortingOptions } from "../Player/PlayerInterfaces";
 import SortAlbumTracks from "./SortAlbumTracks";
 import GetNewItemInMetadataListPosition from "../DataFetcher/AddItemToMetadataList";
+import Settings from "../Settings";
 
 interface FileExplorer {
     name: string,
@@ -39,6 +40,7 @@ declare global {
         queryPermission: ({ mode }: { mode: "read" | "write" | "readwrite" }) => Promise<string>
     }
     interface FileSystemDirectoryHandle {
+        // @ts-ignore
         values: () => FileSystemDirectoryHandleAsyncIterator<FileSystemHandle>
     }
 }
@@ -150,7 +152,7 @@ export async function UploadSongs({ database, pickFolder, metadataToUpdate }: Up
         input.click();
     }
     // We'll try using the File System API if possible
-    if (typeof window.showOpenFilePicker !== "undefined") {
+    if (typeof window.showOpenFilePicker !== "undefined" && Settings.useFSApi) {
         /**
          * A list of all the fetched files
          */

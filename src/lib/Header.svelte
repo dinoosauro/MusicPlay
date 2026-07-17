@@ -4,7 +4,7 @@
 </script>
 <header>
     <div class="flex hcenter gap">
-        <img alt="Logo" src="./icon.svg" style="width: 64px; height: 64px">
+        <img alt="Logo" src="./icon.svg" style="width: 64px; height: 64px; border-radius: 50%">
         <h1>MusicPlay</h1>
     </div>
     <p>{lang("Play and view your local library from your browser")}</p>

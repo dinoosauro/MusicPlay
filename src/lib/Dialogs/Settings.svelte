@@ -222,6 +222,9 @@
     </Card><br>
     <Card secondCard={true}>
         <h4>{lang("Application size")}:</h4>
+        <label class="flex hcenter gap">
+            <input type="checkbox" bind:checked={Settings.useFSApi}>{lang("Avoid copying the audio file in the database if possible. If enabled, the browser might ask you the permission before playing an audio file.")}
+        </label><br>
         <p>{lang("The application is using")} {navigatorQuota} megabytes. {lang("If you're running low on memory, you can use the following buttons to save space. Note that the website will automatically refresh at the end of the process")}.</p>
         <div class="flex hcenter gap wrap">
             <button class="btn" style="flex: 1 0 250px" onclick={() => deleteAllDbEntries(["albumArt"])}>{lang("Delete all album arts")}</button>

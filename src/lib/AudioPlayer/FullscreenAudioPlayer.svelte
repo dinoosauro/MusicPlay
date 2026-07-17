@@ -337,7 +337,7 @@
 
 </script>
 
-<div class="mainBodyHover opacity ensureClickableElements" bind:this={container} style="z-index: 10; opacity: 1">
+<div class="mainBodyHover opacity ensureClickableElements" bind:this={container} style="z-index: 10; opacity: 1;">
     <div
         bind:this={albumArtBackground}
         class="backgroundImage opacity"
@@ -348,7 +348,7 @@
     <div style="margin: 5px; position: fixed; z-index: 999" bind:this={backButtonContainer}>
         <BackButton></BackButton>
     </div>
-    <div class="flex wrap gap forceMaxHeight" style="padding: 15px; height: calc(100% - 30px); gap: 25px;">
+    <div class="flex wrap gap forceMaxHeight" style="height: calc(100% - 30px); gap: 25px; padding: 15px 0px;">
             <div
                 class="flex adaptiveFlex wcenter adaptiveHcenter gap opacity"
                 style="flex-direction: column; opacity: 1;"
@@ -411,7 +411,7 @@
                         alt={lang("Album art")}
                     />
                 </div>
-                <div class="opacity" bind:this={infoContainer}>
+                <div class="opacity" bind:this={infoContainer} style="padding: 10px;">
                     <h2 bind:this={songTitle}>
                         {AudioManager.currentMetadata?.metadata.title}
                     </h2>
@@ -431,7 +431,7 @@
                             ontouchstart={() => (blockProgressUpdate = true)}
                             ontouchend={() => (blockProgressUpdate = false)}
                             defaultValue={AudioManager.audioInformation?.currentTime}
-                            max={AudioManager.audio?.duration}
+                            max={AudioManager.audioInformation.duration}
                             onchange={() => {
                             }}
                             bind:this={progress}
@@ -441,8 +441,8 @@
                             }}
                             step="0.001"
                         />
-                        <span style="float: left;" bind:this={secondsLabel}>{ConvertSecondsInTimestamp(AudioManager.audio?.currentTime ?? 0)}</span>
-                        <span style="float: right" bind:this={durationLabel}>{ConvertSecondsInTimestamp(AudioManager.audio?.duration ?? 0)}</span>
+                        <span style="float: left;" bind:this={secondsLabel}>{ConvertSecondsInTimestamp(AudioManager.audioInformation.currentTime ?? 0)}</span>
+                        <span style="float: right" bind:this={durationLabel}>{ConvertSecondsInTimestamp(AudioManager.audioInformation.duration ?? 0)}</span>
                     </div><br>
                 <div class="flex wcenter gap">
                     <button class="emptyButton" title={lang("Enable/disable shuffle")} onclick={(e) => {
@@ -523,7 +523,7 @@
         </div>
     </div>
     {#if (availableLyrics && showLyricsPlayer) || showQueue}
-        <div bind:this={rightDivContainer} class="opacity" out:fade={{duration: 200, easing: cubicInOut}} in:fade={{duration: 200, easing: cubicInOut}}>
+        <div bind:this={rightDivContainer} class="opacity" style="padding: 10px;" out:fade={{duration: 200, easing: cubicInOut}} in:fade={{duration: 200, easing: cubicInOut}}>
                     {#if availableLyrics && showLyricsPlayer}
                     <div>
                         {#key currentLyricsKey}
