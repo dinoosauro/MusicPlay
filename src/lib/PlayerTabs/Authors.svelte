@@ -5,10 +5,13 @@
     import LoadMetadata from "../../ts/DataFetcher/LoadMetadata";
     import type { InfoProps, MetadataSource } from "../../ts/Player/PlayerInterfaces";
     import { lang } from "../../ts/SvelteComponentsHelpers/Language";
-    import { fade } from "svelte/transition";
+    import { fade, slide } from "svelte/transition";
     import { onMount } from "svelte";
     import AutoRevokeUrl from "../../ts/SvelteComponentsHelpers/AutoRevokeUrl";
     import CheckOpenedResource from "../../ts/SvelteComponentsHelpers/CheckOpenedResource";
+    import Card from "../Card.svelte";
+    import IconsManager from "../../ts/Icons/IconsManager";
+    import { cubicInOut } from "svelte/easing";
 
     const { databases, updateContent, isAlbumArtist, metadata }: { 
         /**
@@ -58,6 +61,10 @@
         }
     })
     let searchBox: HTMLInputElement;
+    /**
+     * If true, the tip to add custom separators should not be displayed
+     */
+    let hideDividePart = $state(localStorage.getItem("MusicPlayer-DivideArtists") === "a");
 </script>
 
 <h2>{!isAlbumArtist ? lang("Artists") : lang("Album artists")}:</h2>
@@ -68,12 +75,28 @@
         const val = searchBox.value.trim().toLowerCase();
         itemToShow = val === "" ? metadata : metadata.filter(i => i[0].toLowerCase().indexOf(val) !== -1);
     }}><br><br>
+    {#if !hideDividePart}
+        <div out:slide={{duration: 200, easing: cubicInOut}}>
+            <Card>
+                <div class="flex hcenter gap">
+                    <p><strong>{lang("Tip")}:</strong> {lang(`If you've added multiple artists in the same artist tag, you can divide them by specifying the divider symbol (for example a comma) in the settings (under the "Artist separation" tab)`)}</p>
+                    <button class="emptyButton flex hcenter wcenter" onclick={() => {
+                        hideDividePart = true;
+                        localStorage.setItem("MusicPlayer-DivideArtists", "a");
+                    }}>
+                        <img use:AutoRevokeUrl src={IconsManager.getIconObjectUrl("dismiss")} alt={lang("Close")} style="width: 24px; height: 24px;">
+                    </button>
+                </div>
+            </Card><br>
+        </div>
+    {/if}
     <div class="flex hcenter gap wrap" style="align-items: stretch">
         {#each itemToShow as [name, entries], i (name)}
             {#if renderItems + (10 * Math.max(1, Math.floor(window.innerWidth / 400))) > i}
             <button use:CheckOpenedResource={{id: name, waitUntilImageMap: `ArtistImg-${name}`}} onclick={() => {
                 updateContent({
                 metadata: entries,
+                passedId: name,
                 type: isAlbumArtist ? "albumArtist" : "artist",
                 albumArt: imageMap.get(`ArtistImg-${name}`)?.src,
                 albumArtImg: imageMap.get(`ArtistImg-${name}`)

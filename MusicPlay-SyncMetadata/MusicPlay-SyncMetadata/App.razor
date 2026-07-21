@@ -108,8 +108,12 @@
     /// <param name="bytes">the Uint8Array of the audio file to update</param>
     /// <param name="metadata">the metadataDb entry with all the metadata</param>
     /// <param name="albumArt">an optional Uint8Array, that'll be the new album art of the file</param>
+    /// <param name="sendBytesBack">If the Uint8Array should be sent back to the parent window instead of saving it on the user's device. If normally is a guid that is used to identify the current operation; it's an empty string if the file should be downloaded</param>
+    /// <param name="clearMetadata">If the metadata of the source audio file should be cleared</param>
+    /// <param name="lyricsLanguage">The default language used for ID3 lyrics</param>
     [JSInvokable]
-    public static async void AddMetadata(byte[][] bytesList, metadataObject[] metadataList, byte[][]? albumArts) {
+    public static async void AddMetadata(byte[][] bytesList, metadataObject[] metadataList, byte[][]? albumArts, string sendBytesBack, bool clearMetadata, string lyricsLanguage) {
+        TagLib.Id3v2.Tag.Language = lyricsLanguage;
         List<string> fileNames = new List<string> {};
         using (MemoryStream zipStream = new MemoryStream()) {
             using (ZipArchive zipArchive = new ZipArchive(zipStream, ZipArchiveMode.Create, true)) {
@@ -121,6 +125,11 @@
                     MemoryStream stream = new MemoryStream();
                     await stream.WriteAsync(bytes);
                     TagLib.File file = TagLib.File.Create(new StreamFileAbstraction(realName, stream));
+                    if (clearMetadata) {
+                        file.RemoveTags(TagLib.TagTypes.AllTags);
+                        file.Save();
+                        file = TagLib.File.Create(new StreamFileAbstraction(realName, stream));
+                    }
                     foreach (KeyValuePair<string, string> property in dictionary) { // Update all the properties 
                         string? newMetadataValue = metadata.GetType().GetProperty(property.Key)?.GetValue(metadata)?.ToString();
                         if (newMetadataValue == null) continue;
@@ -136,7 +145,7 @@
                     stream.Position = 0; // Important: without this, the downloaded file would be empty
                     if (metadataList.Count() == 1) {
                         DotNetStreamReference reference = new DotNetStreamReference(stream);
-                        await JsInteropHelper.InvokeVoidAsync("downloadFile", [reference, realName]);
+                        await JsInteropHelper.InvokeVoidAsync("downloadFile", [reference, realName, sendBytesBack]);
                         reference.Dispose();
                     } else { // Since there are multiple music files, let's add them to a zip file
                         string nameWithoutExtension = realName[..realName.LastIndexOf(".")];
@@ -159,7 +168,7 @@
             if (metadataList.Count() != 1) { // Download the zip file
                 zipStream.Position = 0; // Important: without this, the downloaded file would be empty
                 DotNetStreamReference reference = new DotNetStreamReference(zipStream);
-                await JsInteropHelper.InvokeVoidAsync("downloadFile", [reference, "SelectedFiles.zip"]);
+                await JsInteropHelper.InvokeVoidAsync("downloadFile", [reference, "SelectedFiles.zip", sendBytesBack]);
                 reference.Dispose();
             }
         }
@@ -201,13 +210,18 @@
 <script>
     window.addEventListener("message", async (msg) => {
         if (msg.data.type === "changeMetadata") {
-            await DotNet.invokeMethodAsync("MusicPlay-SyncMetadata", "AddMetadata", msg.data.buffer, msg.data.metadata, msg.data.albumArt.map(i => i || null));
+            await DotNet.invokeMethodAsync("MusicPlay-SyncMetadata", "AddMetadata", msg.data.buffer, msg.data.metadata, msg.data.albumArt.map(i => i || null), msg.data.sendBytesBack ?? "", msg.data.clearMetadata ?? false, msg.data.lyricsLanguage ?? "");
             msg.data = {};
         }
     })
     window.parent.postMessage({ready: true}, "*"); // Tell the main window the website is ready
-    async function downloadFile(stream, name) {
+    async function downloadFile(stream, name, sendBytesBack) {
         let buffer = await stream.arrayBuffer();
+        if (sendBytesBack !== "") {
+            const arr = new Uint8Array(buffer);
+            window.parent.postMessage({sendBytesBack, bytes: arr}, "*", [arr.buffer]);
+            return;
+        }
         let blob = new Blob([buffer]);
         const a = Object.assign(document.createElement("a"), {
             href: URL.createObjectURL(blob),

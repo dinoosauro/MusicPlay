@@ -13,7 +13,7 @@
     import GetAlbumArtId from "../../ts/DataFetcher/GetAlbumArtId";
     import MovePlaylistItem from "../../ts/Database/MovePlaylistItem";
     import DownloadWithMetadata from "../../ts/Database/DownloadWithMetadata";
-    let {songs, position, editMetadataCallback, databases, playlistItems, playlistId, showStatsCallback, selectCallback, enableDeleteModeCallback}: {songs: (MetadataSource | MetadataSourcePlaylist)[], position: number, editMetadataCallback: () => void, databases: DatabaseContainer, playlistItems?: PlaylistContainer[], playlistId?: string, showStatsCallback: () => void, selectCallback: () => void, enableDeleteModeCallback?: () => void} = $props();
+    let {songs, position, editMetadataCallback, databases, playlistItems, playlistId, showStatsCallback, selectCallback, enableDeleteModeCallback, showConvertDialogCallback}: {songs: (MetadataSource | MetadataSourcePlaylist)[], position: number, editMetadataCallback: () => void, databases: DatabaseContainer, playlistItems?: PlaylistContainer[], playlistId?: string, showStatsCallback: () => void, selectCallback: () => void, enableDeleteModeCallback?: () => void, showConvertDialogCallback: () => void} = $props();
 
     /**
      * Convert the milliseconds to either the LRC or TTML timestamp
@@ -86,6 +86,9 @@
                         });
                         break;
                     }
+                    case "convertSong":
+                        showConvertDialogCallback();
+                        break;
                     case "removeFromPlaylist": { // Remove the selected track from the playlist. Unlike the "Add item to playlist", we also need to update the database here.
                         const trackToDelete = songs[position];
                         const currentPlaylist = playlistItems?.findIndex(i => i.id === playlistId);
@@ -214,3 +217,4 @@
         ></ViewerItemDropdownOptions>
     {/snippet}
 </DropdownButtonShow>
+

@@ -34,7 +34,16 @@ let obj = {
         isExponential: true,
         exponential: -4
     },
-    useFSApi: true
+    useFSApi: true,
+    grouping: {
+        divideAuthorsBy: [] as string[],
+        divideAlbumAuthorsBy: [] as string[],
+    },
+    metadataConversion: {
+        addTimestampToEmbeddedLyrics: true,
+        clearMetadata: true,
+        language: "eng"
+    }
 }
 
 

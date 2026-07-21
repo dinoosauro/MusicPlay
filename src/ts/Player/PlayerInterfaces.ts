@@ -51,6 +51,7 @@ export interface InfoProps {
     skipHistoryURL?: boolean,
     playlistObject?: PlaylistContainer[],
     playlistId?: string,
+    passedId?: string
   }
 
   /**

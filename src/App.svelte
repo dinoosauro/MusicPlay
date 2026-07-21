@@ -45,6 +45,7 @@
     import SelectedItemDropdown from "./lib/DropdownMenu/SelectedItemDropdown.svelte";
     import IconsManager from "./ts/Icons/IconsManager";
     import SelectableMusic from "./ts/SvelteComponentsHelpers/SelectableMusic";
+    import Convert from "./lib/Dialogs/Convert.svelte";
   let haveSongsBeenAdded = $state(
     localStorage.getItem("MusicPlayer-ItemsAdded") === "1",
   );
@@ -107,7 +108,7 @@
     /**
      * The type used to divide the `loadedMetadata` object.
      */
-  let sortingType: PossibleSortingOptions = "album";
+  let sortingType: PossibleSortingOptions = new URLSearchParams(window.location.hash.substring(1)).get("pageShown") ? getSortingType(new URLSearchParams(window.location.hash.substring(1)).get("pageShown") as "authors") : "album";
   /**
    * The number of selected items. If it's not undefined, a pop-up will be displayed in the bottom part of the webpage to let the user do some action with the selected tracks.
    */
@@ -117,6 +118,10 @@
     * Passed so that it's possible to create a new playlist from a selection of song tracks, and to display it in the Playlists section without re-reading all the database. 
     */
   let playlistObjectInUse: PlaylistContainer[] | undefined;
+  /**
+   * If not `false`, the metadata list of all the songs that should be converted
+   */
+  let convertDialog = $state<MetadataSource[] | false>(false);
   /**
    * Function called when the user has selected/unselected a song track
    */
@@ -727,12 +732,25 @@
             <div>
               <DropdownButtonShow placeholderIcon="morevertical" iconAlt={lang("Options about the selected tracks")}>
                 {#snippet children(scaleInfo: PopupScalingInfo)}
-                    <SelectedItemDropdown playlistPassed={playlistObjectInUse} {pageShown} animationInfo={scaleInfo} {loadedMetadata} {databases} {selectCallback}></SelectedItemDropdown>
+                    <SelectedItemDropdown convertCallback={() => {
+                      if (!loadedMetadata) return;
+                      // Let's build the metadata array for the convert dialog
+                      const outMetadata = new Set<MetadataSource>();
+                      for (const [_, metadata] of loadedMetadata) {
+                        for (const item of metadata) {
+                          if (SelectHelper.selectedItems.has(item.trackId)) outMetadata.add(item);
+                        }
+                      } 
+                      convertDialog = outMetadata.size === 0 ? false : Array.from(outMetadata);
+                    }} playlistPassed={playlistObjectInUse} {pageShown} animationInfo={scaleInfo} {loadedMetadata} {databases} {selectCallback}></SelectedItemDropdown>
                 {/snippet}
               </DropdownButtonShow>
             </div>
           </div>
           </div>
+        {/if}
+        {#if convertDialog}
+          <Convert closeFn={() => (convertDialog = false)} {databases} data={convertDialog}></Convert>
         {/if}
         {#if showFullscreenPlayer}
           <FullscreenAudioPlayer metadataDb={databases.metadataDb} albumArtDb={databases.albumArtDb} albumArt={`${showFullscreenPlayer.getAttribute("data-nextsrc") || showFullscreenPlayer.src}`} {skipHistoryUrlForFullscreenView} imageTransitionCallback={async (img, elements) => {
@@ -782,6 +800,7 @@
             mediaControllerDiv={audioPlaybackController}
             playlistContainer={selectedInformation.playlistObject}
             playlistId={selectedInformation.playlistId}
+            stateId={selectedInformation.passedId}
             imageTransitionCallback={async (img, elements) => {
               if (selectedInformation?.albumArtImg)
                 await AnimationHandler.imageAnimationHandler({

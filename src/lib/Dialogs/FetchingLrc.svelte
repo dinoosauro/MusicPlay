@@ -18,22 +18,3 @@
         <p>{lang("Fetching lyrics of")} {name} {lang("on LRCLib")}.</p>
     </div>
 </div>
-
-<style>
-    .topDialog {
-        position: fixed;
-        top: 5vh;
-        z-index: 15;
-        border-radius: 16px;
-        width: 100vw;
-        left: 0;
-        pointer-events: none;
-    }
-    .topDialog > div {
-        padding: 15px;
-        backdrop-filter: blur(16px) brightness(40%);
-        max-width: 70vw;
-        border-radius: 12px;
-        border: 1px solid var(--text);
-    }
-</style>

@@ -16,6 +16,8 @@
             <option value="2020 Microsoft Corporation">Fluent UI System Icons</option>
             <option value="LGPL2.1">TagLib-Sharp</option>
             <option value="2023, Gildas Lormeau">zip.js</option>
+            <option value="2019 Jerome Wu">ffmpeg.wasm</option>
+            <option value="LGPL2">FFmpeg</option>
             <option value="2026 Dinoosauro">MusicPlay</option>
         </select><br><br>
         <Card>

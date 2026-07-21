@@ -59,7 +59,7 @@ main {
   flex: 1
 }
 
-*::selection {
+*:not(input)::selection {
   background: transparent;
 }
 
@@ -397,7 +397,7 @@ input[type=range] {
   border-radius: 12px;
 }
 
-input[type=range]:hover {
+input[type=range]:not([disabled]):hover {
   height: 25px;
 }
 
@@ -461,3 +461,20 @@ label.flex.hcenter.gap > input:not([type=checkbox]), label.flex.hcenter.gap > se
         display: none;
     }
   }
+
+      .topDialog {
+        position: fixed;
+        top: 5vh;
+        z-index: 15;
+        border-radius: 16px;
+        width: 100vw;
+        left: 0;
+        pointer-events: none;
+    }
+    .topDialog > div {
+        padding: 15px;
+        backdrop-filter: blur(16px) brightness(40%);
+        max-width: 70vw;
+        border-radius: 12px;
+        border: 1px solid var(--text);
+    }

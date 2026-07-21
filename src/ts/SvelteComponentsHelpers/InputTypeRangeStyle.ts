@@ -42,6 +42,7 @@ export default function inputRangeStyle(range: HTMLInputElement, inputInfo?: ((e
     // Safari has a really frustrating implementation of the default slider, since it forbids sliding if the user hasn't touched the slider pointer (that obviously is hidden in our styling). Therefore, we need to implement the scroll logic manually, by getting the X position of the user scroll and adapting the value according to it.
     for (const eventType of ["touchstart", "touchmove", "mousedown", "mousemove"]) { 
         range.addEventListener(eventType as "touchstart", (e: TouchEvent) => {
+            if (range.disabled) return;
             if (eventType === "mousemove" && !isMouseDown) return; // Since the "mousemove" event runs even if the user hasn't pressed the left button of the mouse
             e.preventDefault();
             if (e.touches && e.touches.length !== 1) return;

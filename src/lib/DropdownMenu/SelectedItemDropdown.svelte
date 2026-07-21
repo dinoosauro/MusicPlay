@@ -25,6 +25,7 @@
         selectCallback,
         playlistPassed,
         pageShown,
+        convertCallback
     }: {
         /**
          * Information used to open/close the pop-up with an animation
@@ -50,6 +51,10 @@
          * The page that is being shown (album view, playlist view etc.)
          */
         pageShown: string,
+        /**
+         * The function called if the user wants to convert the selected songs
+         */
+        convertCallback: () => void
     } = $props();
     /**
      * All the playlists that have been loaded
@@ -120,6 +125,14 @@
                     icon: "save"
                 },
                 categoryItems: []
+            },
+            {
+                categoryInfo: {
+                    text: lang("Convert tracks"),
+                    id: "convert",
+                    icon: "arrowsync"
+                },
+                categoryItems: []
             }
         ]}
         callback={async (id) => {
@@ -165,6 +178,10 @@
                                 queueId: crypto.randomUUID(),
                             });
                     }
+                    break;
+                }
+                case "convert": {
+                    convertCallback();
                     break;
                 }
                 case "createNewPlaylist": { // Create a new playlist

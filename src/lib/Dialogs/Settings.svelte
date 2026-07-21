@@ -60,6 +60,22 @@
     onMount(async () => {
         navigatorQuota = await getNavigatorQuota();
     })
+    /**
+     * The separator for the "Artist" tag that was written by the user
+     */
+    let artistSeparator = "";
+    /**
+     * List of all the already-added separators for the "Artist" tag
+     */
+    let artistSeparatorList = $state(Settings.grouping.divideAuthorsBy.map(i => {return {id: crypto.randomUUID(), text: i}}));
+    /**
+     * The separator for the "Album artist" tag that was written by the user
+     */
+    let albumArtistSeparator = "";
+    /**
+     * List of all the already-added separators for the "Artist" tag
+     */
+    let albumArtistSeparatorList = $state(Settings.grouping.divideAlbumAuthorsBy.map(i => {return {id: crypto.randomUUID(), text: i}}));
 </script>
 <Dialog closeFn={closeCallback}>
     <div class="circularButtonContainer" style="position: fixed; right: calc(15vw + 15px + env(safe-area-inset-right)); z-index: 2">
@@ -108,6 +124,66 @@
         <label class="flex hcenter gap" style="overflow: auto;">
             <input type="checkbox" bind:checked={Settings.mediaSession.enableCustomOffset}>{lang("When using the go forwards/backwards button, always skip of")} <input style="width: 60px;" type="number" bind:value={Settings.mediaSession.customOffset}> {lang("seconds")}
         </label>
+    </Card><br>
+    <Card secondCard={true}>
+        <h4>{lang("Artist separation")}:</h4>
+        <p>{lang("Add the dividers used to separate artists in the metadata")}:</p>
+        <Card>
+            <label class="flex hcenter gap">
+                {lang("New artist separator")}:
+                <input type="text" bind:value={artistSeparator}>
+                <button class="emptyButton flex hcenter wcenter" onclick={() => {
+                    artistSeparatorList.push({id: crypto.randomUUID(), text: artistSeparator});
+                    Settings.grouping.divideAuthorsBy.push(artistSeparator);
+                }}>
+                    <img use:AutoRevokeUrl src={IconsManager.getIconObjectUrl("add")} style="width: 24px; height: 24px" alt={lang("Add")}>
+                </button>
+            </label><br>
+            <p>{lang("Added separators (click to remove)")}:</p>
+            <div class="flex hcenter gap">
+                {#each artistSeparatorList as separator (separator.id)}
+                    <button class="emptyButton" onclick={() => {
+                        const index = artistSeparatorList.findIndex(i => i.id === separator.id);
+                        if (index !== -1) {
+                            artistSeparatorList.splice(index, 1);
+                            Settings.grouping.divideAuthorsBy.splice(index, 1);
+                        }
+                    }}>
+                        <Card secondCard={true}>
+                            {separator.text}
+                        </Card>
+                    </button>
+                {/each}
+            </div>
+        </Card><br>
+                <Card>
+            <label class="flex hcenter gap">
+                {lang("New album artist separator")}:
+                <input type="text" bind:value={albumArtistSeparator}>
+                <button class="emptyButton flex hcenter wcenter" onclick={() => {
+                    albumArtistSeparatorList.push({id: crypto.randomUUID(), text: albumArtistSeparator});
+                    Settings.grouping.divideAlbumAuthorsBy.push(albumArtistSeparator);
+                }}>
+                    <img use:AutoRevokeUrl src={IconsManager.getIconObjectUrl("add")} style="width: 24px; height: 24px" alt={lang("Add")}>
+                </button>
+            </label><br>
+            <p>{lang("Added separators (click to remove)")}:</p>
+            <div class="flex hcenter gap">
+                {#each albumArtistSeparatorList as separator (separator.id)}
+                    <button class="emptyButton" onclick={() => {
+                        const index = albumArtistSeparatorList.findIndex(i => i.id === separator.id);
+                        if (index !== -1) {
+                            albumArtistSeparatorList.splice(index, 1);
+                            Settings.grouping.divideAlbumAuthorsBy.splice(index, 1);
+                        }
+                    }}>
+                        <Card secondCard={true}>
+                            {separator.text}
+                        </Card>
+                    </button>
+                {/each}
+            </div>
+        </Card>
     </Card><br>
     <Card secondCard={true}>
         <h4>{lang("Floating player")}</h4>
@@ -163,6 +239,20 @@
         </label>
     </Card><br>
     {/if}
+    <Card secondCard={true}>
+        <h4>{lang("Metadata copy")}:</h4>
+        <p>{lang("The following settings will be applied when an audio file is exported and the user asks to copy the metadata to the output file")}.</p>
+        <label class="flex hcenter gap">
+            <input type="checkbox" bind:checked={Settings.metadataConversion.addTimestampToEmbeddedLyrics}>{lang("Add timestamps to embedded lyrics")}
+        </label><br>
+        <label class="flex hcenter gap">
+            <input type="checkbox" bind:checked={Settings.metadataConversion.clearMetadata}>{lang("Delete all the metadata that was previously added")}
+        </label><br>
+        <label class="flex hcenter gap">
+            {lang("Lyrics language (for MP3 files)")}
+            <input type="text" bind:value={Settings.metadataConversion.language}>
+        </label>
+    </Card><br>
     <Card secondCard={true}>
         <h4>{lang("Application theme")}:</h4>
         <p>{lang("Here you can change all the colors and values used by the application. You can also customize the font and the CSS blur styling. Note that, if the font you've put doesn't load, you might need to disable your browser's privacy protection. The sliders below the color inputs permit to change the opacity of the property")}.</p>

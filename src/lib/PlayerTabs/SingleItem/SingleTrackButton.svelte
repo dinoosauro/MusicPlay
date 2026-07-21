@@ -9,6 +9,7 @@
     import type { MetadataSource } from "../../../ts/Player/PlayerInterfaces";
     import SelectHelper from "../../../ts/SvelteComponentsHelpers/SelectHelper";
     import SelectableMusic from "../../../ts/SvelteComponentsHelpers/SelectableMusic";
+    import Convert from "../../Dialogs/Convert.svelte";
     let {metadata, albumArtCache, databases, metadataObj, currentPosition, handleAlbumArtCache, editMetadataCallback, showStatsCallback, selectCallback}: {
         /**
          * An array of the metadata that contains only an entry
@@ -59,6 +60,8 @@
     let trackId = $state(metadata[0].trackId);
     let artist = $state(metadata[0].metadata.artist);
     let title = $state(metadata[0].metadata.title);
+
+    let showConvertDialog = $state(false);
 
     $effect(() => {
         if (metadata.length !== 0) {
@@ -142,7 +145,7 @@
             <p class="secondaryMetadata">{artist} – {albumName}</p>
         </div>
         <div data-disableclick>
-            <SongMoreOptions selectCallback={() => {
+            <SongMoreOptions showConvertDialogCallback={() => (showConvertDialog = true)} selectCallback={() => {
                 SelectHelper.selectedItems.add(trackId);
                 opacityBtn.style.backgroundColor = "var(--cardtransparent)";
                 selectCallback();
@@ -150,6 +153,9 @@
         </div>
     </button>
 
+    {#if showConvertDialog}
+        <Convert closeFn={() => (showConvertDialog = false)} {databases} data={metadata}></Convert>
+    {/if}
     <style>
     img {
         width: 65px;

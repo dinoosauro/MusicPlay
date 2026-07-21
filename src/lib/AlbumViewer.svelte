@@ -30,6 +30,9 @@
     import SelectableMusic from "../ts/SvelteComponentsHelpers/SelectableMusic";
     import MovePlaylistItem from "../ts/Database/MovePlaylistItem";
     import appendToBody from "../ts/SvelteComponentsHelpers/AppendToBody";
+    import Convert from "./Dialogs/Convert.svelte";
+    import GetGroupingRegex from "../ts/DataFetcher/GetGroupingRegex";
+    import Settings from "../ts/Settings";
 
     const {
         songs,
@@ -43,7 +46,8 @@
         playlistContainer,
         playlistId,
         sortingType,
-        selectCallback
+        selectCallback,
+        stateId
     }: {
         /**
          * All the songs that should be displayed in the viewer
@@ -86,6 +90,11 @@
          * How the `allMetadataLoaded` object has been sorted
          */
         sortingType: PossibleSortingOptions,
+        /**
+         * The ID of the resource to add in the State.
+         * This is usually passed from the "Artists" tab, since it's the tab where the ID might differ from the metadata embedded in a file (for example, if the user has enabled the option that permits to divide the artists with a character)
+         */
+        stateId?: string
         /**
          * Function to call when the user selects or deselects a track
          */
@@ -152,13 +161,18 @@
      * The ID of the song that has been clicked the last time
      */
     let previouslyClickedId: string | undefined = undefined;
+    /**
+     * If it's a number, the user wants to convert the track at *this* position in the songs array.
+     */
+    let showConvertDialog = $state<false | number>(false);
+
     onMount(() => {
         // Let's update the state of the current page, by adding the ID that can be used to get the image from which the transition originated. In this way, we can permit to trigger that animation even using browser's next/previous page controls
         const state = !contentType || contentType === "album" ? `AArt-${GetAlbumArtId({
             albumAuthor: songs[0].metadata.albumArtist,
             year: songs[0].metadata.year,
             albumName: songs[0].metadata.album
-        })}` : `${contentType === "playlist" ? "PlaylistImg" : "ArtistImg"}-${contentType === "playlist" ? playlistId : songs[0].metadata[contentType === "artist" ? "artist" : "albumArtist"]}`;
+        })}` : `${contentType === "playlist" ? "PlaylistImg" : "ArtistImg"}-${contentType === "playlist" ? playlistId : stateId ?? songs[0].metadata[contentType === "artist" ? "artist" : "albumArtist"]}`;
         if (!skipHistoryUrl) {
             const params = new URLSearchParams(window.location.hash.substring(1));
             params.set("appSection", "metadataList");
@@ -340,7 +354,7 @@
                 <ArtistEditor closeCallback={(imgSrc) => {
                     showMetadataEditor = "none";
                     if (imgSrc) outputAlbumArtSrc = imgSrc;
-                }} artistImgDb={databases.artistImgDb} artistAlbumArt={outputAlbumArtSrc} artistId={contentType === "artist" ? songs[0].metadata.artist : songs[0].metadata.albumArtist}></ArtistEditor>
+                }} artistImgDb={databases.artistImgDb} artistAlbumArt={outputAlbumArtSrc} artistId={history.state.substring(history.state.indexOf("-") + 1)}></ArtistEditor>
         {:else if showMetadataEditor === "album"}
             <AlbumInformationEditor closeCallback={async (imgSrc, requireIdUpdate) => {
                 showMetadataEditor = "none";
@@ -375,36 +389,47 @@
                 if (typeof removeFromList !== "undefined") { // We need to remove an item from the current list, probably because their album/artist/etc name has been changed. 
                 // NOTE: This function is never called from the "Tracks" or "Playlist" context.
                     const item = [songs[removeFromList]];
-                    const newId = contentType === "artist" || contentType === "albumArtist" ? `ArtistImg-${item[0].metadata[contentType === "artist" ? "artist" : "albumArtist"]}` : `AArt-${GetAlbumArtId({
+                    let newIds = contentType === "artist" || contentType === "albumArtist" ? item[0].metadata[contentType === "artist" ? "artist" : "albumArtist"].split(GetGroupingRegex(contentType === "albumArtist")).map(i => `ArtistImg-${i.trim()}`) : [`AArt-${GetAlbumArtId({
                         albumAuthor: item[0].metadata.albumArtist,
                         year: item[0].metadata.year,
                         albumName: item[0].metadata.album
-                    })}`;
+                    })}`];
                     // If the current item was the last one, we can remove the artist/album image from the database to save space.
                     if (songs.length === 1) await IndexedDatabase.remove({db: contentType === "artist" || contentType === "albumArtist" ? databases.artistImgDb : databases.albumArtDb, query: history.state.substring(history.state.indexOf("-") + 1), request: contentType === "artist" || contentType === "albumArtist" ? "artistImg" : "albumArt"}); 
-                    // Let's now find the property where the song should be added
-                    const newEntryId = allMetadataLoaded.findIndex(i => i[0] === newId.substring(newId.indexOf("-") + 1));
-                    const newEntry = allMetadataLoaded[newEntryId];
-                    if (!newEntry) { // We need to create a new album/artist/etc entry, since it's a new name. Therefore, we also need to create a new entry for the album art
-                        const req = await fetch(outputAlbumArtSrc);
-                        await IndexedDatabase.set({
-                            db: contentType === "artist" || contentType === "albumArtist" ? databases.artistImgDb : databases.albumArtDb,
-                            request: contentType === "artist" || contentType === "albumArtist" ? "artistImg" : "albumArt",
-                            object: {
-                                id: newId.substring(newId.indexOf("-") + 1),
-                                data: {img: await req.blob()}
+                    for (const newId of newIds) {
+                        // Let's now find the property where the song should be added
+                        const newEntryId = allMetadataLoaded.findIndex(i => i[0] === newId.substring(newId.indexOf("-") + 1));
+                        let newEntry = allMetadataLoaded[newEntryId];
+                        if (!newEntry) { // We need to create a new album/artist/etc entry, since it's a new name. Therefore, we also need to create a new entry for the album art. If there are multiple artists we wouldn't know where to apply the album art, so we'll just discard it.
+                            if (newIds.length === 1) {
+                                const req = await fetch(outputAlbumArtSrc);
+                                await IndexedDatabase.set({
+                                    db: contentType === "artist" || contentType === "albumArtist" ? databases.artistImgDb : databases.albumArtDb,
+                                    request: contentType === "artist" || contentType === "albumArtist" ? "artistImg" : "albumArt",
+                                    object: {
+                                        id: newId.substring(newId.indexOf("-") + 1),
+                                        data: {img: await req.blob()}
+                                    }
+                                });            
                             }
-                        });            
-                        allMetadataLoaded.splice(GetNewItemInMetadataListPosition({allMetadataLoaded, contentType: sortingType, isReversed: isListInReverse, itemToAdd: item[0]}), 0, [newId.substring(newId.indexOf("-") + 1), item]);
-                    } else { // We just need to append this song to the previous element list
-                        let i = 0;
-                        while (i < newEntry[1].length) {
-                            if (SortAlbumTracks(newEntry[1][i], item[0]) > 0) break;
-                            i++;
+                            allMetadataLoaded.splice(GetNewItemInMetadataListPosition({allMetadataLoaded, contentType: sortingType, isReversed: isListInReverse, useKeyInMetadataLoaded: Settings.grouping[`divide${contentType === "albumArtist" ? "Album" : ""}AuthorsBy` as "divideAuthorsBy"].length !== 0, itemToAdd: newId.substring(newId.indexOf("-") + 1)}), 0, [newId.substring(newId.indexOf("-") + 1), item]);
+                        } else if (!newEntry[1].find(i => i.trackId === item[0].trackId)) { // We just need to append this song to the previous element list
+                            let i = 0;
+                            while (i < newEntry[1].length) {
+                                if (SortAlbumTracks(newEntry[1][i], item[0]) > 0) break;
+                                i++;
+                            }
+                            newEntry[1].splice(i, 0, item[0]);
+                        } else if (contentType === "artist" || contentType === "albumArtist") { // In this case, the track might be added multiple times in the songs array (for example, if the user has enabled the division of song authors from a character). 
+                            const prop = newEntry[1].find(i => i.trackId === item[0].trackId);
+                            if (prop) {
+                                for (const key in prop?.metadata) {
+                                    prop.metadata[key as "album"] = item[0].metadata[key as "album"]
+                                }
+                            }
                         }
-                        newEntry[1].splice(i, 0, item[0]);
+                        songs.splice(removeFromList, 1);
                     }
-                    songs.splice(removeFromList, 1);
                 }
             }}></SongMetadataEditor>
         {/if}
@@ -482,7 +507,7 @@
             {#if songs.length !== 0}
             <br />
             <h2 style="text-align: center; margin-bottom: 10px; overflow-wrap: anywhere;">
-                {contentType === "playlist" ? playlistContainer?.find(i => i.id === playlistId)?.data.name : contentType === "artist" ? songs[0].metadata.artist : contentType === "albumArtist" ? songs[0].metadata.albumArtist : songs[0].metadata.album}
+                {contentType === "playlist" ? playlistContainer?.find(i => i.id === playlistId)?.data.name : contentType === "artist" ? stateId ?? songs[0].metadata.artist : contentType === "albumArtist" ? stateId ?? songs[0].metadata.albumArtist : songs[0].metadata.album}
             </h2>
             {#if !contentType || contentType === "album"}
             <div
@@ -598,19 +623,15 @@
                                 if (SelectHelper.isSelectModeEnabled || isPlaylistDeletionModeEnabled) return;
                                 let albumArtToSend: Blob | string | undefined = albumArt ? outputAlbumArtSrc : undefined;
                                 if (contentType !== "album") {
-                                    if (playlistContainer) { // We need to manually fetch the album art since otherwise we would set the playlist thumbnail as the album art for the popup player
-                                        albumArtToSend = await GetAlbumArt({
-                                            db: databases.albumArtDb,
-                                            id: GetAlbumArtId({
-                                                albumAuthor: song.metadata.albumArtist,
-                                                year: song.metadata.year,
-                                                albumName: song.metadata.album
-                                            })
-                                        });
-                                    } else {
-                                        const req = await fetch(outputAlbumArtSrc);
-                                        albumArtToSend = await req.blob();
-                                    }
+                                    // We need to manually fetch the album art since otherwise we would set the playlist thumbnail as the album art for the popup player
+                                    albumArtToSend = await GetAlbumArt({
+                                        db: databases.albumArtDb,
+                                        id: GetAlbumArtId({
+                                            albumAuthor: song.metadata.albumArtist,
+                                            year: song.metadata.year,
+                                            albumName: song.metadata.album
+                                        })
+                                    });
                                 }
                                 const file = await GetAudioFile({
                                     songDb: databases.songDb,
@@ -640,12 +661,12 @@
                             <span
                                 class="secondaryMetadata"
                                 style="overflow-wrap: anywhere;"
-                                >{contentType === "artist" ? song.metadata.album : (contentType === "albumArtist" || contentType === "playlist") ? `${song.metadata.album} – ${song.metadata.artist}` : song.metadata.artist}</span
+                                >{(contentType === "artist" || contentType === "albumArtist" || contentType === "playlist") ? `${song.metadata.album} – ${song.metadata.artist}` : song.metadata.artist}</span
                             >
                         </button>
                     </div>
                     <div>
-                        <SongMoreOptions enableDeleteModeCallback={playlistId ? () => {
+                        <SongMoreOptions showConvertDialogCallback={() => (showConvertDialog = i)} enableDeleteModeCallback={playlistId ? () => {
                             isPlaylistDeletionModeEnabled = true;
                         } : undefined} selectCallback={() => {
                             const id = (song as MetadataSourcePlaylist).playlistId ?? song.trackId;
@@ -675,6 +696,10 @@
         </div>
     </div>
 </div>
+
+{#if showConvertDialog !== false}
+    <Convert closeFn={() => (showConvertDialog = false)} {databases} data={[songs[showConvertDialog]]}></Convert>
+{/if}
 
 <style>
     .hoverBtn {

@@ -2,6 +2,7 @@ import type { albumArtDB, DatabaseContainer, metadataDB } from "../Database/Data
 import GetAlbumArtId from "./GetAlbumArtId";
 import type { MetadataSource, PossibleSortingOptions } from "../Player/PlayerInterfaces";
 import SortAlbumTracks from "../Database/SortAlbumTracks";
+import GetGroupingRegex from "./GetGroupingRegex";
 
 /**
  * Load the metadata of all the tracks
@@ -44,9 +45,14 @@ export default function LoadMetadata({ metadataDb }: {metadataDb: IDBDatabase}, 
                     case "albumauthors": {
                         let item: {[key: string]: MetadataSource[]} = {};
                         const key = divideBy === "authors" ? "artist" : "albumArtist" as "artist" | "albumArtist";
+                        const regex = GetGroupingRegex(divideBy === "albumauthors");
                         for (const entry of output) {
-                            if (!item[entry.metadata[key]]) item[entry.metadata[key]] = [];
-                            item[entry.metadata[key]].push(entry);
+                            const splittedItems = entry.metadata[key].split(regex); // Divide multiple artists using their separator
+                            for (let key of splittedItems) {
+                                key = key.trim();
+                                if (!item[key]) item[key] = [];
+                                item[key].push(entry);
+                            }
                         }
                         callback(Object.entries(item).sort((a, b) => a[0].localeCompare(b[0])));
                         break;

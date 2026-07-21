@@ -158,6 +158,14 @@
                 },
                 categoryItems: []
             },
+            {
+                categoryInfo: {
+                    text: lang("Convert song"),
+                    id: "convertSong",
+                    icon: "arrowsync"
+                },
+                categoryItems: []
+            },
             ...(hasSyncedLyrics ? [
                 {
                     categoryInfo: {
