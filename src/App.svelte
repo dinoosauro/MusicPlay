@@ -46,6 +46,7 @@
     import IconsManager from "./ts/Icons/IconsManager";
     import SelectableMusic from "./ts/SvelteComponentsHelpers/SelectableMusic";
     import Convert from "./lib/Dialogs/Convert.svelte";
+    import Stats from "./lib/PlayerTabs/Stats.svelte";
   let haveSongsBeenAdded = $state(
     localStorage.getItem("MusicPlayer-ItemsAdded") === "1",
   );
@@ -159,7 +160,7 @@
     const id = params.get("pageShown");
     loadedMetadata = await LoadMetadata(databases, getSortingType(id || "albumView"));
     navigator.storage && navigator.storage.persist && navigator.storage.persist();
-    if (id === "albumView" || id === "trackView" || id === "artistsView" || id === "albumArtistsView" || id === "playlistsView") pageShown = id;
+    if (id === "albumView" || id === "trackView" || id === "artistsView" || id === "albumArtistsView" || id === "playlistsView" || id === "statsView") pageShown = id;
     haveSongsBeenAdded = true; // Since, if there are no entries, the length of loadedMetadata will be 0
     AudioManager.updateSongDb(databases.songDb, databases.albumArtDb, databases.songStatsDb, databases.metadataDb); // Update the databases used by the AudioManager
     history.scrollRestoration = "manual"; // Avoid that the browser restores the scroll position when going forwards or backwards the webpage.
@@ -490,9 +491,9 @@
                 loadedMetadata?.reverse();
                 showFilterDropdownMenu = false;
               }
-              if (id === "albumView" || id === "trackView" || id === "artistsView" || id === "albumArtistsView" || id === "playlistsView") {
+              if (id === "albumView" || id === "trackView" || id === "artistsView" || id === "albumArtistsView" || id === "playlistsView" || id === "statsView") {
                 showFilterDropdownMenu = false;
-                if (databases) {
+                if (databases && id !== "statsView") {
                   sortingType = getSortingType(id);
                   loadedMetadata = await LoadMetadata(databases, sortingType);
                 }
@@ -525,6 +526,7 @@
                     id: "albumArtistsView",
                   },
                   {icon: "heart", text: lang("Playlists view"), id: "playlistsView"},
+                  {icon: "databarvertical", text: lang("Stats view"), id: "statsView"},
                 ],
               },
               {
@@ -783,6 +785,8 @@
             ></Authors>
           {:else if pageShown === "playlistsView"}
           <Playlists passPlaylists={(item) => (playlistObjectInUse = item)} metadata={loadedMetadata} {databases} updateContent={(content) => (selectedInformation = content)}></Playlists>
+          {:else if pageShown === "statsView"}
+            <Stats metadata={loadedMetadata} {databases}></Stats>
           {/if}
           <div use:registerEmptySpace></div>
           {/key}

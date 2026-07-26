@@ -35,6 +35,10 @@
      */
     let albumArtColors = $state(Settings.customArtColors);
     /**
+     * The colors that are used to generate charts
+     */
+    let chartColors = $state(Settings.customChartColors);
+    /**
      * Get the amount of storage the website is using, in megabytes
      */
     async function getNavigatorQuota() {
@@ -287,29 +291,56 @@
     </Card><br>
     <Card secondCard={true}>
         <h4>{lang("Custom colors")}</h4>
-        <p>{lang("Here you can customize the colors used to generate the stats charts or when no album art is available")}.</p>
-        <div class="flex hcenter gap wrap">
-            {#each albumArtColors as color, i}
-                <label class="flex hcenter gap card maxWidth" style="flex: 1 0 150px">
-                    <input defaultValue={color} type="color" onchange={(e) => {
-                        const value = (e.target as HTMLInputElement).value;
-                        albumArtColors[i] = value;
-                        Settings.customArtColors[i] = value;
-                    }}>
-                    <button class="emptyButton flex hcenter" title={lang("Delete this color")} onclick={() => {
-                        albumArtColors.splice(i, 1);
-                        Settings.customArtColors.splice(i, 1)
-                    }}>
-                        <img src={IconsManager.getIconObjectUrl("dismiss")} alt={lang("Delete this color")}>
-                    </button>
-                </label>
-            {/each}
-        </div><br>
-        <button class="btn" onclick={() => {
-            albumArtColors.push("#000000");
-            Settings.customArtColors.push("#000000");
-        }}>{lang("Add new color")}</button>
-    </Card><br>
+        <Card>
+            <p style="text-align: center;"><u>{lang("Album art colors")}:</u></p>
+            <p>{lang("Here you can customize the colors used when no album art is available")}.</p>
+            <div class="flex hcenter gap wrap">
+                {#each albumArtColors as color, i}
+                    <label class="flex hcenter gap card maxWidth" style="flex: 1 0 150px; background-color: var(--secondcard)">
+                        <input defaultValue={color} type="color" onchange={(e) => {
+                            const value = (e.target as HTMLInputElement).value;
+                            albumArtColors[i] = value;
+                            Settings.customArtColors[i] = value;
+                        }}>
+                        <button class="emptyButton flex hcenter" title={lang("Delete this color")} onclick={() => {
+                            albumArtColors.splice(i, 1);
+                            Settings.customArtColors.splice(i, 1)
+                        }}>
+                            <img src={IconsManager.getIconObjectUrl("dismiss")} alt={lang("Delete this color")}>
+                        </button>
+                    </label>
+                {/each}
+            </div><br>
+            <button class="btn" onclick={() => {
+                albumArtColors.push("#000000");
+                Settings.customArtColors.push("#000000");
+            }}>{lang("Add new color")}</button>
+        </Card><br>
+        <Card>
+            <p>{lang("Here you can customize the colors used to generate the stats charts")}.</p>
+            <div class="flex hcenter gap wrap">
+                {#each chartColors as color, i}
+                    <label class="flex hcenter gap card maxWidth" style="flex: 1 0 150px; background-color: var(--secondcard)">
+                        <input defaultValue={color} type="color" onchange={(e) => {
+                            const value = (e.target as HTMLInputElement).value;
+                            chartColors[i] = value;
+                            Settings.customChartColors[i] = value;
+                        }}>
+                        <button class="emptyButton flex hcenter" title={lang("Delete this color")} onclick={() => {
+                            chartColors.splice(i, 1);
+                            Settings.customChartColors.splice(i, 1)
+                        }}>
+                            <img src={IconsManager.getIconObjectUrl("dismiss")} alt={lang("Delete this color")}>
+                        </button>
+                    </label>
+                {/each}
+            </div><br>
+            <button class="btn" onclick={() => {
+                chartColors.push("#000000");
+                Settings.customChartColors.push("#000000");
+            }}>{lang("Add new color")}</button>
+        </Card>
+     </Card><br>
     <Card secondCard={true}>
         <h4>{lang("Application size")}:</h4>
         <label class="flex hcenter gap">

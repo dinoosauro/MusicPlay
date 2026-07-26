@@ -45,25 +45,30 @@
      */
     let disableBlockScrollListener = false;
     /**
-     * The element that has an ongoing animation
+     * A list of the elements that have an ongoing animation
      */
-    let currentAnimationElement: HTMLElement;
+    let currentAnimationElement = new Set<HTMLElement>();
     /**
      * The element that has been used to get how much the application should scroll
      */
     let currentScrollElement: HTMLElement | undefined;
     onMount(() => {
         const interval = setInterval(() => {
-            let {currentTime, duration} = AudioManager.audioInformation ?? {};
+            let {currentTime, duration} = AudioManager.isFromiPhone ? AudioManager.audioInformation ?? {} : (AudioManager.audio as HTMLAudioElement); // If we're not using the iPhone crossfade mode, we can get the current time from the audio object, so that it'll always be updated 
+            if (AudioManager.isFromiPhone) AudioManager.audio?.dispatchEvent(new Event("timeupdate")); // Update the current progress
             if (typeof currentTime === "undefined" || typeof duration === "undefined") return;
             currentTime *= 1000; // Update in ms
+            /**
+             * A list with all the offset of the currently-playing line. 
+             * The application will scroll the webpage using as the `top` property the minimum value in this array, so that, if multiple lines are played at the same time, both will be displayed.
+             */
+            let offsetTopList = new Set<number>();
             for (const [element, data] of lyricsMap) {
                 // Let's first update some properties
                 if (data.generalEnd === -1) data.generalEnd = duration * 1000; 
                 if (data.end === -1) data.end = duration * 1000; 
                 const isDifferentWordButSameLine = typeof data.generalStart !== "undefined" && typeof data.generalEnd !== "undefined" && currentTime > data.generalStart && currentTime < data.generalEnd;
                 const isNotInRange = ((currentTime > data.start && currentTime > data.end) || (currentTime < data.start));
-
                 if (isNotInRange && !isDifferentWordButSameLine) { // Remove all the styling applied, since it's not the line that is being played
                     element.classList.add("doneItem");
                     element.classList.remove("lyricsAnimation", "currentLine", "currentLineColor");
@@ -72,20 +77,21 @@
                     if (((isDifferentWordButSameLine && data.isFirstItem) || !data.isWord) && !blockScroll && currentScrollElement !== element) { // We found the new element to scroll to
                         currentScrollElement = element;
                         disableBlockScrollListener = true;
-                        container.scrollTo({top: element.offsetTop, behavior: "smooth"});
+                        offsetTopList.add(element.offsetTop);
                     }
                     if (data.isWord && currentTime > data.start && currentTime < data.end) { // We need to trigger the fill animation. We'll do it manually, by gradually updating the backgroundPosition value, so that we don't need to care about pauses made by the user.
-                        if (currentAnimationElement === element) {
+                        if (currentAnimationElement.has(element)) {
                             const msDiff = data.end - data.start;
                             const msCurrent = data.end - currentTime;
                             element.style.backgroundPosition = `${100 + Math.round(msCurrent * 100 / msDiff)}%`;
                             continue; // Stop any other event
                         }
-                        currentAnimationElement = element;
+                        currentAnimationElement.add(element);
                         element.classList.add("lyricsAnimation", "currentLineColor");
                         element.style.backgroundPosition = "200%"; // This will make the text gray
 
                     } else { // Remove the lyricsAnimation object since we already passed to a new word, but still on the same line
+                        currentAnimationElement.delete(element);
                         element.classList.remove("lyricsAnimation");
                         if (!isDifferentWordButSameLine && data.isWord) element.classList.remove("currentLineColor");
                     }
@@ -94,6 +100,9 @@
                 }
                 element.classList.add("currentLine");
             } 
+            }
+            if (offsetTopList.size !== 0) { // Scroll the container
+                container.scrollTo({top: Math.min(...offsetTopList), behavior: "smooth"});
             }
         }, 10)
         return () => {

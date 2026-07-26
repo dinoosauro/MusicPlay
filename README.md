@@ -82,6 +82,12 @@ If you've set the custom order, you can change it in two ways:
 - The first one is by clicking on the three dots, and manually moving a song up or down;
 - The second one is by dragging and dropping the song.
 
+### Stats
+
+You can see the playback stats by going to the "Stats" view. Here you'll see your top albums and artists, along with general statistics about the playback of all your library. Moreover, you can click on each track, album name or artist name to see more detailed stats about that item.
+
+You can also share each chart (and the podium graphic) by downloading them as an image.
+
 ## Customization:
 
 From the "Settings" button, you can change the behavior of the application in many ways. You can, for example, decide to automatically fetch lyrics if they're missing, or you can change the color or the font used by the application.

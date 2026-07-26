@@ -8,7 +8,13 @@
     import Dialog from "../Dialog.svelte";
     import { lang } from "../../ts/SvelteComponentsHelpers/Language";
     import Settings from "../../ts/Settings";
-    let {songMetadata, songStats, closeCallback}: {
+    import { chartOptions } from "../../ts/SvelteComponentsHelpers/GetChartFromArtistStats";
+    import type { ChartConfiguration } from "chart.js";
+    import ChartViewer from "../PlayerTabs/SingleItem/ChartViewer.svelte";
+    import { onMount } from "svelte";
+    import GetIntervalBetweenDates from "../../ts/SvelteComponentsHelpers/GetIntervalBetweenDates";
+    import { getIfDateShouldBeSkipped, SkipDate } from "../../ts/SvelteComponentsHelpers/GetStatsDisplayItem";
+    let {songMetadata, songStats, closeCallback, timeRange}: {
         /**
          * The metadata of the song whose stats should be shown
          */
@@ -20,24 +26,41 @@
         /**
          * Function called to close the dialog
          */
-        closeCallback: () => void
+        closeCallback: () => void,
+        /**
+         * The default time range the dialog should use when reading all the stats
+         */
+        timeRange?: "week" | "month" | "year" | "all" | number[]
     } = $props();
 
-    let listenedHours = $derived(Math.floor(songStats.totalMs / 1000 / 3600));
-    let listenedMinutes = $derived(Math.floor((songStats.totalMs - (listenedHours * 3600 * 1000)) / 1000 / 60));
-    let listenedSeconds = $derived(Math.floor((songStats.totalMs - ((listenedMinutes * 60 * 1000) + (listenedHours * 3600 * 1000))) / 1000));
+    /**
+     * The interval of time where the stats have been fetched
+     */
+    let startTime = $state<"week" | "month" | "year" | "all" | number[]>(timeRange ?? "all");
+    /**
+     * If the user should be able to pick a custom number
+     */
+    let showDateRange = $state(Array.isArray(startTime));
+    /**
+     * The total milliseconds of playback in the current audio interval
+     */
+    let totalMs = $state(songStats.totalMs);
+
+    let listenedHours = $derived(Math.floor(totalMs / 1000 / 3600));
+    let listenedMinutes = $derived(Math.floor((totalMs - (listenedHours * 3600 * 1000)) / 1000 / 60));
+    let listenedSeconds = $derived(Math.floor((totalMs - ((listenedMinutes * 60 * 1000) + (listenedHours * 3600 * 1000))) / 1000));
     /**
      * ID of the content that should be displayed in the chart
      */
     let chartOption = $state("days");
     /**
-     * Change the chart type
-     */
-    let chartType = $state("bar");
-    /**
      * If even the columns that have a value of "0" should be displayed
      */
     let showEmptyItems = $state(true);
+    /**
+     * The Chart.Js object 
+     */
+    let chartContent: ChartConfiguration | undefined = $state();
     /**
      * The canvas used to render the chart
      */
@@ -45,11 +68,9 @@
     /**
      * Create the stats chart
      * @param chartOption ID of the content that should be displayed in the chart
-     * @param chartType the type of the output chart
      * @param showEmptyItems if even the columns that have a value of "0" should be displayed
      */
-    async function createChart(chartOption: string, chartType: string, showEmptyItems: boolean) {
-        const Chart = await import("chart.js");
+    async function createChart(chartOption: string, showEmptyItems: boolean) {
         let outputObj: {[key: string]: number} = {};
         // We now need to create all the possible keys for the user's choice. We need to do this so that, even if the `showEmptyItems` property is false, the list will always be ordered
         switch(chartOption) {
@@ -79,41 +100,50 @@
                 break;
             }
         }
-        // Now let's iterate over all the song activity, and let's populate the previous object
-        for (const listening of songStats.activity) {
-            const date = new Date(listening.date);
-            const key = chartOption === "hours" ? date.getHours().toString() : chartOption === "days" ? date.toLocaleDateString(undefined, {weekday: "long"}) : chartOption === "daysMonth" ? date.getDate().toString() : chartOption === "months" ? date.toLocaleDateString(undefined, {month: "long"}) : date.getFullYear();
-            if (!outputObj[key]) outputObj[key] = 0;
-            outputObj[key] += listening.duration;
+        let tempMs = 0;
+        // Now let's iterate over all the song activity, and let's populate the previous object. We'll start from the last item, since it's the most recent one (and so, we'll be able to break the array when we'll find an item with a previous date)
+        for (let i = (songStats.activity.length - 1); i >= 0; i--) {
+            const date = new Date(songStats.activity[i].date);
+            const whatShouldWeDo = getIfDateShouldBeSkipped(startTime, date, songStats.activity[i].date);
+            if (whatShouldWeDo === SkipDate.BREAK) break;
+            if (whatShouldWeDo === SkipDate.CONTINUE) continue;
+            const key = chartOption === "hours" ? date.getHours().toString() : chartOption === "days" ? date.toLocaleDateString(undefined, {weekday: "long"}) : chartOption === "daysMonth" ? date.getDate().toString() : chartOption === "months" ? date.toLocaleDateString(undefined, {month: "long"}) : date.getFullYear().toString();
+            if (typeof outputObj[key] === "undefined") {
+                outputObj[key] = 0;
+            }
+            outputObj[key] += songStats.activity[i].duration;
+            tempMs += songStats.activity[i].duration;
         }
+        totalMs = tempMs;
         if (!showEmptyItems) { // Let's remove the empty items
             for (const key in outputObj) {
                 if (outputObj[key] === 0) delete outputObj[key];
             }
         }
-        let [xAxis, yAxis] = [Object.keys(outputObj), Object.values(outputObj)];
-        Chart.Chart.getChart(canvas)?.destroy();
-        Chart.Chart.register(Chart.BarController, Chart.BarElement, Chart.CategoryScale, Chart.LinearScale, Chart.Tooltip, Chart.Legend, Chart.PolarAreaController, Chart.DoughnutController, Chart.PieController, Chart.LineController, Chart.ArcElement, Chart.LineElement, Chart.RadialLinearScale, Chart.PointElement);
-        Chart.defaults.color = getComputedStyle(document.body).getPropertyValue("--text")
-        new Chart.Chart(canvas, {
-            type: chartType as "bar",
+        chartContent = {
+            type: "bar",
             data: {
-                labels: xAxis,
+                labels: Object.keys(outputObj),
                 datasets: [{
-                    label: songMetadata.metadata.title,
-                    data: yAxis.map(i => Math.round(i / 1000)),
-                    backgroundColor: Settings.customArtColors,
+                    data: Object.values(outputObj),
+                    backgroundColor: Settings.customChartColors,
                     borderColor: getComputedStyle(document.body).getPropertyValue("--text")
                 }]
-            }
-        })
+            },
+            options: chartOptions
+        }
     }
     $effect( () => {
-        createChart(chartOption, chartType, showEmptyItems);
+        createChart(chartOption, showEmptyItems);
     });
+
+    let intervalSelect: HTMLSelectElement;
+    onMount(() => { // Update the select value
+        intervalSelect.value = Array.isArray(startTime) ? "custom" : startTime;
+    })
 </script>
 <Dialog closeFn={closeCallback}>
-    <div class="circularButtonContainer" style="position: fixed; right: calc(15vw + 15px+ env(safe-area-inset-right))">
+    <div class="circularButtonContainer" style="position: fixed; right: calc(15vw + 15px + env(safe-area-inset-right))">
         <button
     class="circularButton emptyButton flex hcenter gap" style="width: fit-content; display: flex;"
     onclick={() => closeCallback()}
@@ -128,7 +158,54 @@
 </button>
     </div>
     <h3>{lang("Stats about")} <i>{songMetadata.metadata.title}</i></h3>
-    <p>{lang("You've listened to")} {songMetadata.metadata.title} {lang("aproximately")} <strong>{Math.round(songStats.totalPlay)} {lang(`time${Math.round(songStats.totalPlay) === 1 ? "" : "s"}`)}</strong>, {lang("for a total of")} <strong>{listenedHours} {lang(`hour${listenedHours === 1 ? "" : "s"}`)}, {listenedMinutes} {lang(`minute${listenedMinutes === 1 ? "" : "s"}`)} {lang("and")} {listenedSeconds} {lang(`second${listenedSeconds === 1 ? "" : "s"}`)}</strong></p>
+    <label>
+        {lang("Show data about")}:
+        <select bind:this={intervalSelect} style="width: fit-content; background-color: var(--secondcard)" onchange={(e) => {
+        const value = (e.target as HTMLInputElement).value;
+        if (value === "week" || value === "month" || value === "year" || value === "all") {
+            startTime = value;
+            showDateRange = false;
+        } else {
+            showDateRange = true;
+            startTime = [];
+            return;
+        }
+            createChart(chartOption, showEmptyItems);
+        }}>
+            <option value="all">{lang("all time")}</option>
+            <option value="week">{lang("this week")}</option>
+            <option value="month">{lang("this month")}</option>
+            <option value="year">{lang("this year")}</option>
+            <option value="custom">{lang("custom")}</option>
+        </select>
+        {#if showDateRange}
+        {lang("from")}: <input defaultValue={Array.isArray(startTime) ? (() => {
+            if (startTime.length !== 2) return;
+            // Let's create a new date, and then extract the string in the `YYYY-MM-DDTHH:MM` format, that is the one required by the datetime-local input
+            const date = new Date(startTime[0]);
+            date.setTime(date.valueOf() - (60000 * date.getTimezoneOffset())); // Since the source of the date is another `datetime-local` input, we'll need to remove the automatic timezone change applied
+            const str = date.toISOString();
+            return str.substring(0, str.indexOf(":") + 3);
+        })() : undefined} style="width: fit-content; background-color: var(--secondcard)" type="datetime-local" onchange={(e) => {
+            if (!Array.isArray(startTime)) startTime = [];
+            startTime[0] = new Date((e.target as HTMLInputElement).value).getTime();
+            if (typeof startTime[1] !== "undefined") createChart(chartOption, showEmptyItems);
+        }}>
+        to: <input style="width: fit-content; background-color: var(--secondcard)" type="datetime-local" defaultValue={Array.isArray(startTime) ? (() => {
+            if (startTime.length !== 2) return;
+            // Let's create a new date, and then extract the string in the `YYYY-MM-DDTHH:MM` format, that is the one required by the datetime-local input
+            const date = new Date(startTime[1]);
+            date.setTime(date.valueOf() - (60000 * date.getTimezoneOffset())); // Since the source of the date is another `datetime-local` input, we'll need to remove the automatic timezone change applied
+            const str = date.toISOString();
+            return str.substring(0, str.indexOf(":") + 3);
+        })() : undefined} onchange={(e) => {
+            if (!Array.isArray(startTime)) startTime = [];
+            startTime[1] = new Date((e.target as HTMLInputElement).value).getTime();
+            if (typeof startTime[0] !== "undefined") createChart(chartOption, showEmptyItems);
+        }}>
+        {/if}
+    </label>
+    <p>{lang("You've listened to")} {songMetadata.metadata.title} {lang("aproximately")} <strong>{Math.round(totalMs / (songMetadata.metadata.duration * 1000))} {lang(`time${Math.round(Math.round(totalMs / (songMetadata.metadata.duration * 1000))) === 1 ? "" : "s"}`)}</strong>, {lang("for a total of")} <strong>{listenedHours} {lang(`hour${listenedHours === 1 ? "" : "s"}`)}, {listenedMinutes} {lang(`minute${listenedMinutes === 1 ? "" : "s"}`)} {lang("and")} {listenedSeconds} {lang(`second${listenedSeconds === 1 ? "" : "s"}`)}</strong></p>
     <Card secondCard={true}>
         <h4>{lang("When you've listened to")} {songMetadata.metadata.title}</h4>
         <label class="flex hcenter gap">
@@ -142,20 +219,17 @@
             </select>
         </label><br>
         <label class="flex hcenter gap">
-            {lang("Chart type")}: <select bind:value={chartType}>
-                <option value="bar">{lang("Bar")}</option>
-                <option value="doughnut">{lang("Doughnut")}</option>
-                <option value="line">{lang("Line")}</option>
-                <option value="polarArea">{lang("Polar area")}</option>
-            </select>
-        </label>
-        <br>
-        <label class="flex hcenter gap">
             <input type="checkbox" bind:checked={showEmptyItems}>
             {lang("Show empty columns")}
         </label><br>
-        <canvas bind:this={canvas} style="width: 100%; max-height: 50vh; background-color: var(--card); border-radius: 12px; padding: 15px;"></canvas><br>
-        <i>{lang("Data unit: seconds")}</i><br><br>
+        {#if chartContent}
+            <Card>
+                <ChartViewer exportInfo={{
+                    title: `${lang("Listens of")} ${songMetadata.metadata.title}, ${lang("divided by")} ${chartOption === "daysMonth" ? lang("days of the month") : lang(chartOption.substring(0, chartOption.length - 1))}`,
+                    dateInterval: GetIntervalBetweenDates(startTime)
+                    }} inputSecondColor={true} canvasCallback={(c) => (canvas = c)} chartObject={chartContent}></ChartViewer>
+            </Card><br>
+        {/if}
         <div class="flex hcenter gap">
             <button class="btn" onclick={() => {
                 canvas.toBlob((blob) => {

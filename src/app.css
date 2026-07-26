@@ -11,6 +11,13 @@
   --backgroundimgfilter: blur(32px) brightness(30%);
   --boxshadow: #ffffff22;
   --imgboxshadowcode: -3px 2px 15px 9px;
+  --firstplace: #e3c255;
+  --firstplacebg: #d4af37;
+  --secondplace: #b3bccf;
+  --secondplacebg: #989da7;
+  --thirdplace: #e89440;
+  --thirdplacebg: #af875f;
+  
 }
 
 * {
@@ -477,4 +484,24 @@ label.flex.hcenter.gap > input:not([type=checkbox]), label.flex.hcenter.gap > se
         max-width: 70vw;
         border-radius: 12px;
         border: 1px solid var(--text);
+    }
+
+    .statWrap > * {
+        flex: 1 250px;
+    }
+
+    .mainStatWrap {
+        flex-wrap: wrap;
+    }
+    .mainStatWrap > * {
+        flex: 1 500px;
+        min-width: 0;
+    }
+
+    .statWrap > .emptyButton {
+      height: auto;
+    }
+    .statWrap > .emptyButton > .card {
+      height: 100%;
+      box-sizing: border-box;
     }

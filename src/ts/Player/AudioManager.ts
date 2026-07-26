@@ -625,6 +625,10 @@ const obj = {
         }
     },
     /**
+     * If true, the Web Audio API should be used also for audio decoding. This is true only if the application is being run on iOS and the user wants the crossfade transition, since the only reason we use the Web Audio API for decoding is to circumvent the "only an Audio element can be played at a time" restriction
+     */
+    isFromiPhone,
+    /**
      * Add a function that'll be called when something happens from the `AudioManager`
      * @param fn the function to call when there's an event fired from the `AudioManager`
      * @param remove if the function should be removed

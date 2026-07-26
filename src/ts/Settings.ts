@@ -23,6 +23,7 @@ let obj = {
     cssColors: {} as {[key: string]: string},
     language: navigator.language.substring(0, 2) as string | undefined,
     customArtColors: ["#4a7856", "#4a6f78", "#524a78", "#784a6d", "#784a52", "#785f4a", "#78704a"],
+    customChartColors: ["#5b9291", "#96bf65", "#5f5c4b", "#f6c870", "#a65341", "#982d57", "#5b94d1", "#45a56a", "#999999","#e96957", "#f3e7d4" ],
     equalizer: [] as EqualizerInfo[],
     customEqPresets: [] as EqualizerPreset[],
     settingsComponentOptions: {
