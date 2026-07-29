@@ -385,8 +385,8 @@
         ])
         isImageTransitionDone = true;
         setTimeout(() => { // Fix for mobile devices: when doing a crossfade animation between the album arts, the box shadow is bugged. By moving it to the span we'll face no issues. However, when the user opens the fullscreen player, a black square appears if the box shadow transition is done to the span and not to the image. So, we need to move it after this transition has been done.
-            ((e.target as HTMLElement).parentElement as HTMLElement).classList.add("imgBoxShadow");
-            ((e.target as HTMLElement)).classList.remove("imgBoxShadow");
+            (permanentImg.parentElement as HTMLElement).classList.add("imgBoxShadow");
+            permanentImg.classList.remove("imgBoxShadow");
         }, 2000)
         }}
     onerror={async (e) => {
