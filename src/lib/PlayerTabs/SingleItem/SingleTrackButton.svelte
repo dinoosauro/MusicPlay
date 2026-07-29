@@ -10,6 +10,8 @@
     import SelectHelper from "../../../ts/SvelteComponentsHelpers/SelectHelper";
     import SelectableMusic from "../../../ts/SvelteComponentsHelpers/SelectableMusic";
     import Convert from "../../Dialogs/Convert.svelte";
+    import UpdateRecentlyPlayed from "../../../ts/SvelteComponentsHelpers/UpdateRecentlyPlayed";
+    import AddLongPressEventForHomepage from "../../../ts/SvelteComponentsHelpers/AddLongPressEventForHomepage";
     let {metadata, albumArtCache, databases, metadataObj, currentPosition, handleAlbumArtCache, editMetadataCallback, showStatsCallback, selectCallback}: {
         /**
          * An array of the metadata that contains only an entry
@@ -78,7 +80,7 @@
     })
     let opacityBtn: HTMLElement;
 </script>
-<button bind:this={opacityBtn} onclick={async (e) => {
+<button use:AddLongPressEventForHomepage={{id: trackId, type: "track"}} bind:this={opacityBtn} onclick={async (e) => {
         if ((e.target as HTMLElement).getAttribute("data-disableclick") !== null || (e.target as HTMLElement).closest("[data-disableclick]")) return; // Avoid playing the track if the user clicked on the three dots
         if (SelectHelper.isSelectModeEnabled) {
             SelectHelper.selectedItems[SelectHelper.selectedItems.has(trackId) ? "delete" : "add"](trackId);
@@ -134,6 +136,7 @@
         AudioManager.audioContext.originalQueue = [...AudioManager.audioContext.queue];
         AudioManager.audioContext.queuePosition = 0;
         AudioManager.audioContext.playlistId = null;
+        UpdateRecentlyPlayed({type: "track", id: metadata[0].trackId});
     }} class="emptyButton flex hcenter gap card maxWidth" use:SelectableMusic.addToList={`Track-${trackId}`} out:fade={{duration: 1, delay: 1000}} style={`display: flex; height: auto; transition: 0.2s ease-in-out;${SelectHelper.selectedItems.has(trackId) ? " background-color: var(--cardtransparent)" : ""}`}>
         {#await handleAlbumArtCache(GetAlbumArtId({albumAuthor: albumArtist, year, albumName}), albumName)}
             

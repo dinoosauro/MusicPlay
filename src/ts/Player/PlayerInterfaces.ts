@@ -51,7 +51,8 @@ export interface InfoProps {
     skipHistoryURL?: boolean,
     playlistObject?: PlaylistContainer[],
     playlistId?: string,
-    passedId?: string
+    passedId?: string,
+    isFromRecentlyPlayed?: boolean
   }
 
   /**
@@ -77,5 +78,10 @@ export interface EqualizerPreset {
     db: [number, number, number, number, number, number, number, number, number, number],
     default?: boolean,
     name: string,
+    id: string
+}
+
+export interface RecentlyPlayed {
+    type: "album" | "artist" | "albumartist" | "playlist" | "track",
     id: string
 }

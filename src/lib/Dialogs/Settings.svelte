@@ -12,6 +12,10 @@
     import inputRangeStyle from "../../ts/SvelteComponentsHelpers/InputTypeRangeStyle";
     import OpenSource from "./OpenSource.svelte";
     import Equalizer from "./Equalizer.svelte";
+    import type { RecentlyPlayed } from "../../ts/Player/PlayerInterfaces";
+    import { slide } from "svelte/transition";
+    import { cubicInOut } from "svelte/easing";
+    import ShowSettingContent from "./ShowSettingContent.svelte";
 
     // iOS cannot play multiple audio tracks at the same time. Therefore, we'll need to change the audio playback method by using the Web Audio API. We'll notify the user about that, and we'll also need to refresh the webpage when the crossfade is enabled/disabled
     const isIos = /(iPad|iPhone|iPod)/g.test(navigator.userAgent);
@@ -26,6 +30,7 @@
          */
         databases?: DatabaseContainer
     } = $props();
+
     /**
      * Number of megabytes the application has used on the user's device
      */
@@ -80,7 +85,27 @@
      * List of all the already-added separators for the "Artist" tag
      */
     let albumArtistSeparatorList = $state(Settings.grouping.divideAlbumAuthorsBy.map(i => {return {id: crypto.randomUUID(), text: i}}));
+    /**
+     * An object that contains all the cards that can be added to the Home view, and if they're visible or not
+     */
+    let homepageContentToShow = $state(Settings.homepage.contentToShow.map(i => {return {name: i as RecentlyPlayed["type"], visible: true}}));
+    for (const key of ["album", "artist", "albumartist", "playlist", "track"]) {
+        if (!homepageContentToShow.find(i => i.name === key)) homepageContentToShow.push({name: key as RecentlyPlayed["type"], visible: false});
+    }
+
+    /**
+     * ID of the Settings tab that has been opened
+     */
+    let openedContent = $state("lyrics");
+    /**
+     * Function called to update the State
+     * @param state the ID of the settings tab to open
+     */
+    function updateState(state: string) {
+        openedContent = state;
+    }
 </script>
+
 <Dialog closeFn={closeCallback}>
     <div class="circularButtonContainer" style="position: fixed; right: calc(15vw + 15px + env(safe-area-inset-right)); z-index: 2">
         <button
@@ -98,278 +123,372 @@
 </div>
     <h3>{lang("Settings")}:</h3>
     <Card secondCard={true}>
-        <h4>{lang("Lyrics integration")}:</h4>
-        <p>{lang("The application can automatically fetch missing lyrics from")} <a href="https://lrclib.net" target="_blank">LRCLib</a>. {lang("The application will only share the necessary metadata to identify the currently-playing song. If you enable this, you're also subject to LRCLib's Terms of Service")}.</p>
-        <label class="flex hcenter gap">
-            <input type="checkbox" bind:checked={Settings.lyrics.useLrcLibByDefault}>{lang("Automatically fetch lyrics if missing")}
-        </label><br>
-        <label class="flex hcenter gap">
-            <input type="checkbox" bind:checked={Settings.lyrics.useLrcLibIfLyricsArentSynced}>{lang("Automatically fetch lyrics if the uploaded ones aren't synced")}
-        </label><br>
-        <label class="flex hcenter gap">
-            <input type="checkbox" bind:checked={Settings.lyrics.informOfLrcLibUsage}>{lang("Show a pop-up every time a request is made to LRCLib")}
-        </label>
+        <ShowSettingContent title={lang("Lyrics integration")} suggestedState="lyrics" currentState={openedContent} {updateState}>
+            <p>{lang("The application can automatically fetch missing lyrics from")} <a href="https://lrclib.net" target="_blank">LRCLib</a>. {lang("The application will only share the necessary metadata to identify the currently-playing song. If you enable this, you're also subject to LRCLib's Terms of Service")}.</p>
+            <label class="flex hcenter gap">
+                <input type="checkbox" bind:checked={Settings.lyrics.useLrcLibByDefault}>{lang("Automatically fetch lyrics if missing")}
+            </label><br>
+            <label class="flex hcenter gap">
+                <input type="checkbox" bind:checked={Settings.lyrics.useLrcLibIfLyricsArentSynced}>{lang("Automatically fetch lyrics if the uploaded ones aren't synced")}
+            </label><br>
+            <label class="flex hcenter gap">
+                <input type="checkbox" bind:checked={Settings.lyrics.informOfLrcLibUsage}>{lang("Show a pop-up every time a request is made to LRCLib")}
+            </label>
+        </ShowSettingContent>
     </Card><br>
     <Card secondCard={true}>
-        <h4>{lang("Browser buttons behavior")}:</h4>
-        <p>{lang("You can control the behavior of the media buttons you can find in the Control Center while playing music")}.</p>
-        <label class="flex hcenter gap">
-            {lang("When clicking on the next/previous song button")}, <select bind:value={Settings.mediaSession.actionForNextPrevButtons}>
-                <option value="next">{lang("Skip to the next/previous track")}</option>
-                <option value="seek">{lang("Go forwards/backwards in the track")}</option>
-            </select>
-        </label><br>
-        <label class="flex hcenter gap">
-            {lang("When clicking on the go forwards/backwards button")}, <select bind:value={Settings.mediaSession.actionForSeekButtons}>
-                <option value="next">{lang("Skip to the next/previous track")}</option>
-                <option value="seek">{lang("Go forwards/backwards in the track")}</option>
-            </select>
-        </label><br>
-        <label class="flex hcenter gap" style="overflow: auto;">
-            <input type="checkbox" bind:checked={Settings.mediaSession.enableCustomOffset}>{lang("When using the go forwards/backwards button, always skip of")} <input style="width: 60px;" type="number" bind:value={Settings.mediaSession.customOffset}> {lang("seconds")}
-        </label>
+            <ShowSettingContent title={lang("Browser buttons behavior")} suggestedState="browserbuttons" currentState={openedContent} {updateState}>
+                <p>{lang("You can control the behavior of the media buttons you can find in the Control Center while playing music")}.</p>
+                <label class="flex hcenter gap">
+                    {lang("When clicking on the next/previous song button")}, <select bind:value={Settings.mediaSession.actionForNextPrevButtons}>
+                        <option value="next">{lang("Skip to the next/previous track")}</option>
+                        <option value="seek">{lang("Go forwards/backwards in the track")}</option>
+                    </select>
+                </label><br>
+                <label class="flex hcenter gap">
+                    {lang("When clicking on the go forwards/backwards button")}, <select bind:value={Settings.mediaSession.actionForSeekButtons}>
+                        <option value="next">{lang("Skip to the next/previous track")}</option>
+                        <option value="seek">{lang("Go forwards/backwards in the track")}</option>
+                    </select>
+                </label><br>
+                <label class="flex hcenter gap" style="overflow: auto;">
+                    <input type="checkbox" bind:checked={Settings.mediaSession.enableCustomOffset}>{lang("When using the go forwards/backwards button, always skip of")} <input style="width: 60px;" type="number" bind:value={Settings.mediaSession.customOffset}> {lang("seconds")}
+                </label>
+            </ShowSettingContent>
     </Card><br>
     <Card secondCard={true}>
-        <h4>{lang("Artist separation")}:</h4>
-        <p>{lang("Add the dividers used to separate artists in the metadata")}:</p>
+        <ShowSettingContent title={lang("Artist separation")} suggestedState="artistseparation" currentState={openedContent} {updateState}>
+            <p>{lang("Add the dividers used to separate artists in the metadata")}:</p>
+            <Card>
+                <label class="flex hcenter gap">
+                    {lang("New artist separator")}:
+                    <input type="text" style="background-color: var(--secondcard);" bind:value={artistSeparator}>
+                    <button class="emptyButton flex hcenter wcenter" onclick={() => {
+                        artistSeparatorList.push({id: crypto.randomUUID(), text: artistSeparator});
+                        Settings.grouping.divideAuthorsBy.push(artistSeparator);
+                    }}>
+                        <img use:AutoRevokeUrl src={IconsManager.getIconObjectUrl("add")} style="width: 24px; height: 24px" alt={lang("Add")}>
+                    </button>
+                </label><br>
+                <p>{lang("Added separators (click to remove)")}:</p>
+                <div class="flex hcenter gap">
+                    {#each artistSeparatorList as separator (separator.id)}
+                        <button class="emptyButton" onclick={() => {
+                            const index = artistSeparatorList.findIndex(i => i.id === separator.id);
+                            if (index !== -1) {
+                                artistSeparatorList.splice(index, 1);
+                                Settings.grouping.divideAuthorsBy.splice(index, 1);
+                            }
+                        }}>
+                            <Card secondCard={true}>
+                                {separator.text}
+                            </Card>
+                        </button>
+                    {/each}
+                </div>
+            </Card><br>
+            <Card>
+                <label class="flex hcenter gap">
+                    {lang("New album artist separator")}:
+                    <input type="text" style="background-color: var(--secondcard);" bind:value={albumArtistSeparator}>
+                    <button class="emptyButton flex hcenter wcenter" onclick={() => {
+                        albumArtistSeparatorList.push({id: crypto.randomUUID(), text: albumArtistSeparator});
+                        Settings.grouping.divideAlbumAuthorsBy.push(albumArtistSeparator);
+                    }}>
+                        <img use:AutoRevokeUrl src={IconsManager.getIconObjectUrl("add")} style="width: 24px; height: 24px" alt={lang("Add")}>
+                    </button>
+                </label><br>
+                <p>{lang("Added separators (click to remove)")}:</p>
+                <div class="flex hcenter gap">
+                    {#each albumArtistSeparatorList as separator (separator.id)}
+                        <button class="emptyButton" onclick={() => {
+                            const index = albumArtistSeparatorList.findIndex(i => i.id === separator.id);
+                            if (index !== -1) {
+                                albumArtistSeparatorList.splice(index, 1);
+                                Settings.grouping.divideAlbumAuthorsBy.splice(index, 1);
+                            }
+                        }}>
+                            <Card secondCard={true}>
+                                {separator.text}
+                            </Card>
+                        </button>
+                    {/each}
+                </div>
+            </Card>
+        </ShowSettingContent>
+    </Card><br>
+    <Card secondCard={true}>
+    <ShowSettingContent title={lang("Homepage")} suggestedState="homepage" currentState={openedContent} {updateState}>
+        <label class="flex hcenter gap">
+            {lang("Default page")}: <select bind:value={Settings.homepage.defaultView}>
+                <option value="homeView">{lang("Home")}</option>
+                <option value="albumView">{lang("Album")}</option>
+                <option value="trackView">{lang("Tracks")}</option>
+                <option value="artistsView">{lang("Artists")}</option>
+                <option value="albumArtistsView">{lang("Album artists")}</option>
+                <option value="playlistsView">{lang("Playlists")}</option>
+            </select>
+        </label><br>
         <Card>
-            <label class="flex hcenter gap">
-                {lang("New artist separator")}:
-                <input type="text" bind:value={artistSeparator}>
-                <button class="emptyButton flex hcenter wcenter" onclick={() => {
-                    artistSeparatorList.push({id: crypto.randomUUID(), text: artistSeparator});
-                    Settings.grouping.divideAuthorsBy.push(artistSeparator);
-                }}>
-                    <img use:AutoRevokeUrl src={IconsManager.getIconObjectUrl("add")} style="width: 24px; height: 24px" alt={lang("Add")}>
-                </button>
-            </label><br>
-            <p>{lang("Added separators (click to remove)")}:</p>
-            <div class="flex hcenter gap">
-                {#each artistSeparatorList as separator (separator.id)}
-                    <button class="emptyButton" onclick={() => {
-                        const index = artistSeparatorList.findIndex(i => i.id === separator.id);
-                        if (index !== -1) {
-                            artistSeparatorList.splice(index, 1);
-                            Settings.grouping.divideAuthorsBy.splice(index, 1);
-                        }
-                    }}>
-                        <Card secondCard={true}>
-                            {separator.text}
-                        </Card>
-                    </button>
+            <p>{lang("Change the order of the displayed card on the homepage. Changes will be applied the next time you'll open the Home view")}.</p>
+            <div class="flex gap" style="flex-direction: column;">
+                {#each homepageContentToShow as option, i (option.name)}
+                    <Card secondCard={true}>
+                        <div class="flex hcenter">
+                            <p>
+                                {option.name === "albumartist" ? lang("Album artist") : lang(`${option.name[0].toLocaleUpperCase()}${option.name.substring(1)}s`)}
+                            </p>
+                            <div class="flex gap maxWidth" style="justify-content: right; height: fit-content">
+                                {#if option.visible}
+                                <button class="emptyButton flex hcenter wcenter circularButton hoveredBtn" style="height: auto; padding: 10px" onclick={() => {
+                                    Settings.homepage.contentToShow.splice(i, 1);
+                                    homepageContentToShow.splice(i, 1);
+                                    homepageContentToShow.push({name: option.name, visible: false});
+                                }}>
+                                    <img use:AutoRevokeUrl alt={lang("Hide")} style="width: 24px; height: 24px" src={IconsManager.getIconObjectUrl("eyeoff")}>
+                                </button>
+                                    {#if i !== 0}
+                                    <button class="emptyButton flex hcenter wcenter circularButton hoveredBtn" style="height: auto; padding: 10px" onclick={() => {
+                                        Settings.homepage.contentToShow.splice(i - 1, 0, ...Settings.homepage.contentToShow.splice(i, 1));
+                                        homepageContentToShow.splice(i - 1, 0, ...homepageContentToShow.splice(i, 1));
+                                    }}>
+                                        <img use:AutoRevokeUrl alt={lang("Up")} style="width: 24px; height: 24px" src={IconsManager.getIconObjectUrl("arrowup")}>
+                                    </button>
+                                    {/if}
+                                    {#if i !== homepageContentToShow.filter(i => i.visible).length - 1}
+                                    <button class="emptyButton flex hcenter wcenter circularButton hoveredBtn" style="height: auto; padding: 10px" onclick={() => {
+                                        Settings.homepage.contentToShow.splice(i + 1, 0, ...Settings.homepage.contentToShow.splice(i, 1));
+                                        homepageContentToShow.splice(i + 1, 0, ...homepageContentToShow.splice(i, 1));
+                                    }}>
+                                    <img use:AutoRevokeUrl alt={lang("Down")} style="width: 24px; height: 24px" src={IconsManager.getIconObjectUrl("arrowdown")}>
+                                    </button>
+                                    {/if}
+                                {:else}
+                                <button class="emptyButton flex hcenter wcenter circularButton hoveredBtn" style="height: auto; padding: 10px" onclick={() => {
+                                    Settings.homepage.contentToShow.push(option.name);
+                                    option.visible = true;
+                                    homepageContentToShow.splice(Settings.homepage.contentToShow.length - 1, 0, ...homepageContentToShow.splice(i, 1));
+                                }}>
+                                    <img use:AutoRevokeUrl alt={lang("Show")} style="width: 24px; height: 24px" src={IconsManager.getIconObjectUrl("eye")}>
+                                </button>
+                                {/if}
+                            </div>
+                        </div>
+                    </Card>
                 {/each}
-            </div>
-        </Card><br>
-                <Card>
+            </div><br>
             <label class="flex hcenter gap">
-                {lang("New album artist separator")}:
-                <input type="text" bind:value={albumArtistSeparator}>
-                <button class="emptyButton flex hcenter wcenter" onclick={() => {
-                    albumArtistSeparatorList.push({id: crypto.randomUUID(), text: albumArtistSeparator});
-                    Settings.grouping.divideAlbumAuthorsBy.push(albumArtistSeparator);
-                }}>
-                    <img use:AutoRevokeUrl src={IconsManager.getIconObjectUrl("add")} style="width: 24px; height: 24px" alt={lang("Add")}>
-                </button>
+                <input type="checkbox" bind:checked={Settings.homepage.scrollRecentlyPlayed}>
+                {lang("Put the recently played elements on one line")}
             </label><br>
-            <p>{lang("Added separators (click to remove)")}:</p>
-            <div class="flex hcenter gap">
-                {#each albumArtistSeparatorList as separator (separator.id)}
-                    <button class="emptyButton" onclick={() => {
-                        const index = albumArtistSeparatorList.findIndex(i => i.id === separator.id);
-                        if (index !== -1) {
-                            albumArtistSeparatorList.splice(index, 1);
-                            Settings.grouping.divideAlbumAuthorsBy.splice(index, 1);
-                        }
-                    }}>
-                        <Card secondCard={true}>
-                            {separator.text}
-                        </Card>
-                    </button>
-                {/each}
-            </div>
+            <label class="flex hcenter gap">
+                <input type="checkbox" bind:checked={Settings.homepage.scrollOtherContent}>
+                {lang("Put the displayed cards on the homepage on one line")}
+            </label><br>
+            <label class="flex hcenter gap">
+                {lang("Maximum number of recently played elements")}
+                <input type="number" bind:value={Settings.homepage.maximumRecentlyPlayed} style="background-color: var(--secondcard);">
+            </label>
         </Card>
+    </ShowSettingContent>
     </Card><br>
     <Card secondCard={true}>
-        <h4>{lang("Floating player")}</h4>
-        <label class="flex hcenter gap">
-            <input type="checkbox" bind:checked={Settings.miniPlayer.enableMiniMode} onchange={() => {
-                settingsUpdate.updateFloatingPlayerMiniValue && settingsUpdate.updateFloatingPlayerMiniValue();
-            }}>
-            {lang("Put the song/artist name below the controls if there's little space")}
-        </label><br>
-        <label class="flex hcenter gap">
-            <input type="checkbox" bind:checked={Settings.miniPlayer.showAdvancedControls} onchange={() => {
-                settingsUpdate.updateFloatingPlayerShuffleRepeatVisibility && settingsUpdate.updateFloatingPlayerShuffleRepeatVisibility();
-            }}>
-            {lang("Show the shuffle and repeat controls also in the floating player")}
-        </label>
+        <ShowSettingContent title={lang("Floating player")} suggestedState="floatingPlayer" currentState={openedContent} {updateState}>
+            <label class="flex hcenter gap">
+                <input type="checkbox" bind:checked={Settings.miniPlayer.enableMiniMode} onchange={() => {
+                    settingsUpdate.updateFloatingPlayerMiniValue && settingsUpdate.updateFloatingPlayerMiniValue();
+                }}>
+                {lang("Put the song/artist name below the controls if there's little space")}
+            </label><br>
+            <label class="flex hcenter gap">
+                <input type="checkbox" bind:checked={Settings.miniPlayer.showAdvancedControls} onchange={() => {
+                    settingsUpdate.updateFloatingPlayerShuffleRepeatVisibility && settingsUpdate.updateFloatingPlayerShuffleRepeatVisibility();
+                }}>
+                {lang("Show the shuffle and repeat controls also in the floating player")}
+            </label>
+        </ShowSettingContent>
     </Card><br>
         <Card secondCard={true}>
-            <h4>{lang("Playback rate")}</h4>
-            <label class="flex hcenter gap">
-                {lang("Default playback rate")}: <input use:inputRangeStyle type="range" min="0.25" max="4" bind:value={Settings.playback.standardPlaybackRate}>
-            </label><br>
-            <label class="flex hcenter gap">
-                <input type="checkbox" bind:checked={Settings.playback.adjustPitchForPlaybackRate} onchange={() => {
-                    if (AudioManager.audio) AudioManager.audio.preservesPitch = Settings.playback.adjustPitchForPlaybackRate;
-                }}>
-                {lang("Adjust the picth to compensate to the new playback rate")}
-            </label>
+            <ShowSettingContent title={lang("Playback rate")} suggestedState="playbackRate" currentState={openedContent} {updateState}>
+                <label class="flex hcenter gap">
+                    {lang("Default playback rate")}: <input use:inputRangeStyle type="range" min="0.25" max="4" bind:value={Settings.playback.standardPlaybackRate}>
+                </label><br>
+                <label class="flex hcenter gap">
+                    <input type="checkbox" bind:checked={Settings.playback.adjustPitchForPlaybackRate} onchange={() => {
+                        if (AudioManager.audio) AudioManager.audio.preservesPitch = Settings.playback.adjustPitchForPlaybackRate;
+                    }}>
+                    {lang("Adjust the picth to compensate to the new playback rate")}
+                </label>
+            </ShowSettingContent>
         </Card><br>
-    <Equalizer></Equalizer><br>
+        <Card secondCard={true}>
+            <ShowSettingContent title={lang("Equalizer")} suggestedState="equalizer" currentState={openedContent} {updateState}>
+                <Equalizer></Equalizer>
+            </ShowSettingContent>
+        </Card><br>
     {#if true}
     <Card secondCard={true}>
-        <h4>{lang("Crossfade")}:</h4>
-        {#if isIos}
-        <p>
-            <strong>{lang("Warning")}:</strong> {lang("Due to iOS restrictions, enabling crossfade between tracks require using a different audio decoding method. If you face any issues, disable crossfade. The webpage will be automatically refreshed if you enable/disable crossfade.")}
-        </p>
-        {/if}
-        <label class="flex hcenter gap">
-            {lang("Transition between tracks (in seconds)")}: <input type="number" bind:value={Settings.crossfade.seconds} onchange={() => {
-                if (isIos && ((Settings.crossfade.seconds > 0 && prevCrossfade === 0) || (Settings.crossfade.seconds === 0 && prevCrossfade > 0) )) {
-                    window.location.reload();
-                }
-                prevCrossfade = Settings.crossfade.seconds;
-            }}>
-        </label><br>
-        <label class="flex hcenter gap">
-            <input type="checkbox" bind:checked={Settings.crossfade.isExponential}>{lang("Make the transition smoother (non-linear)")}
-        </label><br>
-        <label class="flex hcenter gap">
-            {lang("Exponential curve")}: <input defaultValue={(Settings.crossfade.exponential * -1) - 2} type="range" use:inputRangeStyle={(e) => {
-                Settings.crossfade.exponential = (+(e.target as HTMLInputElement).value * -1) - 2;
-            }}  min="0.25" max="6" step="0.25">
-        </label>
+        <ShowSettingContent title={lang("Crossfade")} suggestedState="crossfade" currentState={openedContent} {updateState}>
+            {#if isIos}
+            <p>
+                <strong>{lang("Warning")}:</strong> {lang("Due to iOS restrictions, enabling crossfade between tracks require using a different audio decoding method. If you face any issues, disable crossfade. The webpage will be automatically refreshed if you enable/disable crossfade.")}
+            </p>
+            {/if}
+            <label class="flex hcenter gap">
+                {lang("Transition between tracks (in seconds)")}: <input type="number" bind:value={Settings.crossfade.seconds} onchange={() => {
+                    if (isIos && ((Settings.crossfade.seconds > 0 && prevCrossfade === 0) || (Settings.crossfade.seconds === 0 && prevCrossfade > 0) )) {
+                        window.location.reload();
+                    }
+                    prevCrossfade = Settings.crossfade.seconds;
+                }}>
+            </label><br>
+            <label class="flex hcenter gap">
+                <input type="checkbox" bind:checked={Settings.crossfade.isExponential}>{lang("Make the transition smoother (non-linear)")}
+            </label><br>
+            <label class="flex hcenter gap">
+                {lang("Exponential curve")}: <input defaultValue={(Settings.crossfade.exponential * -1) - 2} type="range" use:inputRangeStyle={(e) => {
+                    Settings.crossfade.exponential = (+(e.target as HTMLInputElement).value * -1) - 2;
+                }}  min="0.25" max="6" step="0.25">
+            </label>
+        </ShowSettingContent>
     </Card><br>
     {/if}
     <Card secondCard={true}>
-        <h4>{lang("Metadata copy")}:</h4>
-        <p>{lang("The following settings will be applied when an audio file is exported and the user asks to copy the metadata to the output file")}.</p>
-        <label class="flex hcenter gap">
-            <input type="checkbox" bind:checked={Settings.metadataConversion.addTimestampToEmbeddedLyrics}>{lang("Add timestamps to embedded lyrics")}
-        </label><br>
-        <label class="flex hcenter gap">
-            <input type="checkbox" bind:checked={Settings.metadataConversion.clearMetadata}>{lang("Delete all the metadata that was previously added")}
-        </label><br>
-        <label class="flex hcenter gap">
-            {lang("Lyrics language (for MP3 files)")}
-            <input type="text" bind:value={Settings.metadataConversion.language}>
-        </label>
-    </Card><br>
-    <Card secondCard={true}>
-        <h4>{lang("Application theme")}:</h4>
-        <p>{lang("Here you can change all the colors and values used by the application. You can also customize the font and the CSS blur styling. Note that, if the font you've put doesn't load, you might need to disable your browser's privacy protection. The sliders below the color inputs permit to change the opacity of the property")}.</p>
-        <div class="flex hcenter gap wrap">
-            {#each [["background", lang("Background color"), "color"], ["text", lang("Text/icon color"), "color"], ["secondtext", lang("Secondary text color"), "color"], ["thirdtext", lang("Previous lyrics color (for word-by-word lyrics)"), "color"], ["card", lang("Main card color"), "color", true], ["secondcard", lang("Secondary card color"), "color"], ["accent", lang("Accent color"), "color"], ["boxshadow", lang("Color around the album art"), "color"], ["font", lang("CSS font name"), "text"], ["backgroundimgfilter", lang("CSS filter for the background album art"), "text"], ["imgboxshadowcode", lang("CSS filter for the box-shadow around album arts"), "text"]] as [cssValue, description, inputType, addTransparent]}
-            <label class="flex hcenter gap card maxWidth" style="flex: 1 0 250px">
-                {description}
-                <div style="width: 100%;">
-                <input type={inputType as "color"} defaultValue={getComputedStyle(document.body).getPropertyValue(`--${cssValue}`)} oninput={(e) => {
-                    const opacity = getComputedStyle(document.body).getPropertyValue(`--${cssValue}`).substring(7, 9);
-                    const val = `${(e.target as HTMLInputElement).value}${opacity}`;
-                    document.body.style.setProperty(`--${cssValue}`, val);
-                    Settings.cssColors[cssValue as string] = val;
-                    if (addTransparent) { // Used only for "card"
-                        document.body.style.setProperty(`--${cssValue}transparent`, `${val.substring(0, 7)}5e`);
-                        Settings.cssColors[cssValue as string] = val;
-                    }
-                }}>
-                {#if inputType === "color"}
-                <div style="height: 10px"></div>
-                    <input use:inputRangeStyle={(e) => {
-                        const color = getComputedStyle(document.body).getPropertyValue(`--${cssValue}`).substring(0, 7);
-                        const val = `${color}${(+(e.target as HTMLInputElement).value).toString(16).padStart(2, "0").toUpperCase()}`;
-                        Settings.cssColors[cssValue as string] = val;
-                        document.body.style.setProperty(`--${cssValue}`, val);
-                    }} type="range" min="0" max="255" defaultValue={parseInt(getComputedStyle(document.body).getPropertyValue(`--${cssValue}`).substring(7, 9) === "" ? "FF" : getComputedStyle(document.body).getPropertyValue(`--${cssValue}`).substring(7, 9), 16)}>
-                {/if}
-                </div>
+        <ShowSettingContent title={lang("Metadata copy")} suggestedState="metadataCopy" currentState={openedContent} {updateState}>            
+            <p>{lang("The following settings will be applied when an audio file is exported and the user asks to copy the metadata to the output file")}.</p>
+            <label class="flex hcenter gap">
+                <input type="checkbox" bind:checked={Settings.metadataConversion.addTimestampToEmbeddedLyrics}>{lang("Add timestamps to embedded lyrics")}
+            </label><br>
+            <label class="flex hcenter gap">
+                <input type="checkbox" bind:checked={Settings.metadataConversion.clearMetadata}>{lang("Delete all the metadata that was previously added")}
+            </label><br>
+            <label class="flex hcenter gap">
+                {lang("Lyrics language (for MP3 files)")}
+                <input type="text" bind:value={Settings.metadataConversion.language}>
             </label>
-            {/each}
-        </div>
+        </ShowSettingContent>
     </Card><br>
     <Card secondCard={true}>
-        <h4>{lang("Custom colors")}</h4>
-        <Card>
-            <p style="text-align: center;"><u>{lang("Album art colors")}:</u></p>
-            <p>{lang("Here you can customize the colors used when no album art is available")}.</p>
+        <ShowSettingContent title={lang("Application theme")} suggestedState="applicationTheme" currentState={openedContent} {updateState}>        
+            <p>{lang("Here you can change all the colors and values used by the application. You can also customize the font and the CSS blur styling. Note that, if the font you've put doesn't load, you might need to disable your browser's privacy protection. The sliders below the color inputs permit to change the opacity of the property")}.</p>
             <div class="flex hcenter gap wrap">
-                {#each albumArtColors as color, i}
-                    <label class="flex hcenter gap card maxWidth" style="flex: 1 0 150px; background-color: var(--secondcard)">
-                        <input defaultValue={color} type="color" onchange={(e) => {
-                            const value = (e.target as HTMLInputElement).value;
-                            albumArtColors[i] = value;
-                            Settings.customArtColors[i] = value;
-                        }}>
-                        <button class="emptyButton flex hcenter" title={lang("Delete this color")} onclick={() => {
-                            albumArtColors.splice(i, 1);
-                            Settings.customArtColors.splice(i, 1)
-                        }}>
-                            <img src={IconsManager.getIconObjectUrl("dismiss")} alt={lang("Delete this color")}>
-                        </button>
-                    </label>
+                {#each [["background", lang("Background color"), "color"], ["text", lang("Text/icon color"), "color"], ["secondtext", lang("Secondary text color"), "color"], ["thirdtext", lang("Previous lyrics color (for word-by-word lyrics)"), "color"], ["card", lang("Main card color"), "color", true], ["secondcard", lang("Secondary card color"), "color"], ["accent", lang("Accent color"), "color"], ["boxshadow", lang("Color around the album art"), "color"], ["font", lang("CSS font name"), "text"], ["backgroundimgfilter", lang("CSS filter for the background album art"), "text"], ["imgboxshadowcode", lang("CSS filter for the box-shadow around album arts"), "text"]] as [cssValue, description, inputType, addTransparent]}
+                <label class="flex hcenter gap card maxWidth" style="flex: 1 0 250px">
+                    {description}
+                    <div style="width: 100%;">
+                    <input type={inputType as "color"} defaultValue={getComputedStyle(document.body).getPropertyValue(`--${cssValue}`)} oninput={(e) => {
+                        const opacity = getComputedStyle(document.body).getPropertyValue(`--${cssValue}`).substring(7, 9);
+                        const val = `${(e.target as HTMLInputElement).value}${opacity}`;
+                        document.body.style.setProperty(`--${cssValue}`, val);
+                        Settings.cssColors[cssValue as string] = val;
+                        if (addTransparent) { // Used only for "card"
+                            document.body.style.setProperty(`--${cssValue}transparent`, `${val.substring(0, 7)}5e`);
+                            Settings.cssColors[cssValue as string] = val;
+                        }
+                    }}>
+                    {#if inputType === "color"}
+                    <div style="height: 10px"></div>
+                        <input use:inputRangeStyle={(e) => {
+                            const color = getComputedStyle(document.body).getPropertyValue(`--${cssValue}`).substring(0, 7);
+                            const val = `${color}${(+(e.target as HTMLInputElement).value).toString(16).padStart(2, "0").toUpperCase()}`;
+                            Settings.cssColors[cssValue as string] = val;
+                            document.body.style.setProperty(`--${cssValue}`, val);
+                        }} type="range" min="0" max="255" defaultValue={parseInt(getComputedStyle(document.body).getPropertyValue(`--${cssValue}`).substring(7, 9) === "" ? "FF" : getComputedStyle(document.body).getPropertyValue(`--${cssValue}`).substring(7, 9), 16)}>
+                    {/if}
+                    </div>
+                </label>
                 {/each}
-            </div><br>
-            <button class="btn" onclick={() => {
-                albumArtColors.push("#000000");
-                Settings.customArtColors.push("#000000");
-            }}>{lang("Add new color")}</button>
-        </Card><br>
-        <Card>
-            <p>{lang("Here you can customize the colors used to generate the stats charts")}.</p>
-            <div class="flex hcenter gap wrap">
-                {#each chartColors as color, i}
-                    <label class="flex hcenter gap card maxWidth" style="flex: 1 0 150px; background-color: var(--secondcard)">
-                        <input defaultValue={color} type="color" onchange={(e) => {
-                            const value = (e.target as HTMLInputElement).value;
-                            chartColors[i] = value;
-                            Settings.customChartColors[i] = value;
-                        }}>
-                        <button class="emptyButton flex hcenter" title={lang("Delete this color")} onclick={() => {
-                            chartColors.splice(i, 1);
-                            Settings.customChartColors.splice(i, 1)
-                        }}>
-                            <img src={IconsManager.getIconObjectUrl("dismiss")} alt={lang("Delete this color")}>
-                        </button>
-                    </label>
-                {/each}
-            </div><br>
-            <button class="btn" onclick={() => {
-                chartColors.push("#000000");
-                Settings.customChartColors.push("#000000");
-            }}>{lang("Add new color")}</button>
-        </Card>
+            </div>
+        </ShowSettingContent>
+    </Card><br>
+    <Card secondCard={true}>
+        <ShowSettingContent title={lang("Custom colors")} suggestedState="customColors" currentState={openedContent} {updateState}>
+            <Card>
+                <p style="text-align: center;"><u>{lang("Album art colors")}:</u></p>
+                <p>{lang("Here you can customize the colors used when no album art is available")}.</p>
+                <div class="flex hcenter gap wrap">
+                    {#each albumArtColors as color, i}
+                        <label class="flex hcenter gap card maxWidth" style="flex: 1 0 150px; background-color: var(--secondcard)">
+                            <input defaultValue={color} type="color" onchange={(e) => {
+                                const value = (e.target as HTMLInputElement).value;
+                                albumArtColors[i] = value;
+                                Settings.customArtColors[i] = value;
+                            }}>
+                            <button class="emptyButton flex hcenter" title={lang("Delete this color")} onclick={() => {
+                                albumArtColors.splice(i, 1);
+                                Settings.customArtColors.splice(i, 1)
+                            }}>
+                                <img src={IconsManager.getIconObjectUrl("dismiss")} alt={lang("Delete this color")}>
+                            </button>
+                        </label>
+                    {/each}
+                </div><br>
+                <button class="btn" onclick={() => {
+                    albumArtColors.push("#000000");
+                    Settings.customArtColors.push("#000000");
+                }}>{lang("Add new color")}</button>
+            </Card><br>
+            <Card>
+                <p>{lang("Here you can customize the colors used to generate the stats charts")}.</p>
+                <div class="flex hcenter gap wrap">
+                    {#each chartColors as color, i}
+                        <label class="flex hcenter gap card maxWidth" style="flex: 1 0 150px; background-color: var(--secondcard)">
+                            <input defaultValue={color} type="color" onchange={(e) => {
+                                const value = (e.target as HTMLInputElement).value;
+                                chartColors[i] = value;
+                                Settings.customChartColors[i] = value;
+                            }}>
+                            <button class="emptyButton flex hcenter" title={lang("Delete this color")} onclick={() => {
+                                chartColors.splice(i, 1);
+                                Settings.customChartColors.splice(i, 1)
+                            }}>
+                                <img src={IconsManager.getIconObjectUrl("dismiss")} alt={lang("Delete this color")}>
+                            </button>
+                        </label>
+                    {/each}
+                </div><br>
+                <button class="btn" onclick={() => {
+                    chartColors.push("#000000");
+                    Settings.customChartColors.push("#000000");
+                }}>{lang("Add new color")}</button>
+            </Card>
+        </ShowSettingContent>
      </Card><br>
     <Card secondCard={true}>
-        <h4>{lang("Application size")}:</h4>
-        <label class="flex hcenter gap">
-            <input type="checkbox" bind:checked={Settings.useFSApi}>{lang("Avoid copying the audio file in the database if possible. If enabled, the browser might ask you the permission before playing an audio file.")}
-        </label><br>
-        <p>{lang("The application is using")} {navigatorQuota} megabytes. {lang("If you're running low on memory, you can use the following buttons to save space. Note that the website will automatically refresh at the end of the process")}.</p>
-        <div class="flex hcenter gap wrap">
-            <button class="btn" style="flex: 1 0 250px" onclick={() => deleteAllDbEntries(["albumArt"])}>{lang("Delete all album arts")}</button>
-            <button class="btn" style="flex: 1 0 250px" onclick={() => deleteAllDbEntries(["artistImg"])}>{lang("Delete all artist images")}</button>
-            <button class="btn" style="flex: 1 0 250px" onclick={() => deleteAllDbEntries(["playlistImg"])}>{lang("Delete all playlist images")}</button>
-            <button class="btn" style="flex: 1 0 250px" onclick={() => deleteAllDbEntries(["songStats"])}>{lang("Delete all song stats")}</button>
-            <button class="btn" style="flex: 1 0 250px" onclick={() => deleteAllDbEntries(["contentData", "musicMetadata", "albumArt", "artistImg", "folderHandle", "playlist", "playlistImg", "songStats"])}>{lang("Delete everything")}</button>
-        </div>
+        <ShowSettingContent title={lang("Application size")} suggestedState="applicationSize" currentState={openedContent} {updateState}>            
+            <label class="flex hcenter gap">
+                <input type="checkbox" bind:checked={Settings.useFSApi}>{lang("Avoid copying the audio file in the database if possible. If enabled, the browser might ask you the permission before playing an audio file.")}
+            </label><br>
+            <p>{lang("The application is using")} {navigatorQuota} megabytes. {lang("If you're running low on memory, you can use the following buttons to save space. Note that the website will automatically refresh at the end of the process")}.</p>
+            <div class="flex hcenter gap wrap">
+                <button class="btn" style="flex: 1 0 250px" onclick={() => deleteAllDbEntries(["albumArt"])}>{lang("Delete all album arts")}</button>
+                <button class="btn" style="flex: 1 0 250px" onclick={() => deleteAllDbEntries(["artistImg"])}>{lang("Delete all artist images")}</button>
+                <button class="btn" style="flex: 1 0 250px" onclick={() => deleteAllDbEntries(["playlistImg"])}>{lang("Delete all playlist images")}</button>
+                <button class="btn" style="flex: 1 0 250px" onclick={() => deleteAllDbEntries(["songStats"])}>{lang("Delete all song stats")}</button>
+                <button class="btn" style="flex: 1 0 250px" onclick={() => deleteAllDbEntries(["contentData", "musicMetadata", "albumArt", "artistImg", "folderHandle", "playlist", "playlistImg", "songStats"])}>{lang("Delete everything")}</button>
+            </div>
+        </ShowSettingContent>
     </Card><br>
     <Card secondCard={true}>
-        <h4>Language:</h4>
-        <p>You might need to refresh the webpage to apply the selected language.</p>
-        <select bind:value={Settings.language}>
-            <option>Select a language</option>
-            <option value="en">English</option>
-            <option value="it">Italiano</option>
-        </select>
+        <ShowSettingContent title={"Language"} suggestedState="language" currentState={openedContent} {updateState}>            
+            <p>You might need to refresh the webpage to apply the selected language.</p>
+            <select bind:value={Settings.language}>
+                <option>Select a language</option>
+                <option value="en">English</option>
+                <option value="it">Italiano</option>
+            </select>
+        </ShowSettingContent>
     </Card><br>
-    <OpenSource></OpenSource>
-    <br>
     <Card secondCard={true}>
-        <h4>{lang("Information about MusicPlay")}:</h4>
-        <p>MusicPlay {lang("version")} {window.musicPlayerVersion}</p>
-        <a href="https://github.com/dinoosauro/MusicPlay" target="_blank">{lang("View on GitHub")}</a>
+        <ShowSettingContent title={lang("Open source licenses")} suggestedState="openSource" currentState={openedContent} {updateState}>            
+            <OpenSource></OpenSource>
+        </ShowSettingContent>
+    </Card><br>
+    <Card secondCard={true}>
+        <ShowSettingContent title={lang("Information about MusicPlay")} suggestedState="appInfo" currentState={openedContent} {updateState}>
+            <p>MusicPlay {lang("version")} {window.musicPlayerVersion}</p>
+            <a href="https://github.com/dinoosauro/MusicPlay" target="_blank">{lang("View on GitHub")}</a>
+        </ShowSettingContent>
     </Card>
 </Dialog>
 

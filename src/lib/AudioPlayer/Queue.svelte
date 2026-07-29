@@ -45,6 +45,7 @@
 {#snippet queueItem(data: MetadataSourceQueue[], isCertain?: boolean)}
     {#each data as queueItem, i (queueItem.queueId)}
         <div role="button" tabindex={i} draggable="true" ondragover={(e) => e.preventDefault()} ondrop={(e) => {
+            e.preventDefault();
             const data = e.dataTransfer?.getData("text/plain");
             if (typeof data !== "undefined") {
                 /**

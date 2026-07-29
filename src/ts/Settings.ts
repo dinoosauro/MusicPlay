@@ -1,4 +1,4 @@
-import type { EqualizerInfo, EqualizerPreset } from "./Player/PlayerInterfaces";
+import type { EqualizerInfo, EqualizerPreset, RecentlyPlayed } from "./Player/PlayerInterfaces";
 
 let obj = {
     lyrics: {
@@ -44,6 +44,13 @@ let obj = {
         addTimestampToEmbeddedLyrics: true,
         clearMetadata: true,
         language: "eng"
+    },
+    homepage: {
+        contentToShow: ["album", "artist", "albumartist", "playlist", "track"] as RecentlyPlayed["type"][],
+        defaultView: "albumView",
+        scrollRecentlyPlayed: true,
+        scrollOtherContent: false,
+        maximumRecentlyPlayed: 10
     }
 }
 

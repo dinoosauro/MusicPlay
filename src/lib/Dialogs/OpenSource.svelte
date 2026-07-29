@@ -6,8 +6,6 @@
      */
     let openSourceLicense = $state("2026 Borewit");
 </script>
-<Card secondCard={true}>
-        <h4>Open source licenses:</h4>
         <p>This application is made possible by some third-party open source library. You can find their license here below.</p>
         <select bind:value={openSourceLicense}>
             <option value="2026 Borewit">music-metadata</option>
@@ -1258,4 +1256,3 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
             </p>
     {/if}
         </Card>
-    </Card>

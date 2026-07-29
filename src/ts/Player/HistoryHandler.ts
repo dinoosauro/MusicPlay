@@ -1,4 +1,4 @@
-import type { MetadataSource } from "./PlayerInterfaces";
+import type { MetadataSource, RecentlyPlayed } from "./PlayerInterfaces";
 
 const obj = {
     /**
@@ -27,7 +27,15 @@ const obj = {
         /**
          * Function that can be called to remove a playlist. This is usually later called from the `popstate` event handler if the `delete` property is set to true.
          */
-        deletePlaylist: undefined as ((id: string) => void) | undefined
+        deletePlaylist: undefined as ((id: string) => void) | undefined,
+        /**
+         * Function that can be called to remove an element from the Homepage, since the object used there aren't automatically updated.
+         */
+        deleteFromHomeTab: undefined as ((data: RecentlyPlayed) => void) | undefined,
+        /**
+         * Function that can be called to remove an album from the homepage, usually called when the Album ID changes
+         */
+        removeAlbumNameFromHomeTab: undefined as ((id: string) => void) | undefined
     },
     /**
      * Function to close the currently open dialog

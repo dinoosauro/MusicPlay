@@ -225,8 +225,14 @@
         {#if chartContent}
             <Card>
                 <ChartViewer exportInfo={{
-                    title: `${lang("Listens of")} ${songMetadata.metadata.title}, ${lang("divided by")} ${chartOption === "daysMonth" ? lang("days of the month") : lang(chartOption.substring(0, chartOption.length - 1))}`,
-                    dateInterval: GetIntervalBetweenDates(startTime)
+                    dateInterval: GetIntervalBetweenDates(startTime),
+                    alternativeTitles: [{
+                        description: lang("Default"),
+                        title: `${lang("Listens of")} ${songMetadata.metadata.title}, ${lang("divided by")} ${chartOption === "daysMonth" ? lang("days of the month") : lang(chartOption.substring(0, chartOption.length - 1))}`
+                    }, {
+                        description: lang("Without the division"),
+                        title:  `${lang("Listens of")} ${songMetadata.metadata.title}`
+                    }]
                     }} inputSecondColor={true} canvasCallback={(c) => (canvas = c)} chartObject={chartContent}></ChartViewer>
             </Card><br>
         {/if}

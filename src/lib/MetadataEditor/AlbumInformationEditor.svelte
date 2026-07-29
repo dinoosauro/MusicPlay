@@ -65,10 +65,11 @@
             } 
             if (img.src !== albumArt) { // Let's update the album art
                 const albumArtId = GetAlbumArtId({albumAuthor: songs[0].metadata.albumArtist, year: songs[0].metadata.year, albumName: songs[0].metadata.album});
-                const cachedImage = imageMap.get(`AArt-${albumArtId}`);
-                if (cachedImage) {
-                    URL.revokeObjectURL(cachedImage.src);
-                    cachedImage.src = img.src;
+                for (const cachedImage of [imageMap.get(`FromRecentlyPlayedAArt-${albumArtId}`), imageMap.get(`AArt-${albumArtId}`)]) {
+                    if (cachedImage) {
+                        URL.revokeObjectURL(cachedImage.src);
+                        cachedImage.src = img.src;
+                    }
                 }
                 const req = await fetch(img.src);
                 const blob = await req.blob();

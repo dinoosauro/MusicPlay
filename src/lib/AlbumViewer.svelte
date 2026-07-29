@@ -33,6 +33,7 @@
     import Convert from "./Dialogs/Convert.svelte";
     import GetGroupingRegex from "../ts/DataFetcher/GetGroupingRegex";
     import Settings from "../ts/Settings";
+    import UpdateRecentlyPlayed from "../ts/SvelteComponentsHelpers/UpdateRecentlyPlayed";
 
     const {
         songs,
@@ -47,7 +48,8 @@
         playlistId,
         sortingType,
         selectCallback,
-        stateId
+        stateId,
+        isFromRecentlyPlayed
     }: {
         /**
          * All the songs that should be displayed in the viewer
@@ -94,7 +96,11 @@
          * The ID of the resource to add in the State.
          * This is usually passed from the "Artists" tab, since it's the tab where the ID might differ from the metadata embedded in a file (for example, if the user has enabled the option that permits to divide the artists with a character)
          */
-        stateId?: string
+        stateId?: string,
+        /**
+         * If the album/playlist/artist has been opened from the "Recently played" section of the Home
+        */
+        isFromRecentlyPlayed?: boolean
         /**
          * Function to call when the user selects or deselects a track
          */
@@ -168,11 +174,11 @@
 
     onMount(() => {
         // Let's update the state of the current page, by adding the ID that can be used to get the image from which the transition originated. In this way, we can permit to trigger that animation even using browser's next/previous page controls
-        const state = !contentType || contentType === "album" ? `AArt-${GetAlbumArtId({
+        const state = !contentType || contentType === "album" ? `${isFromRecentlyPlayed ? "FromRecentlyPlayed" : ""}AArt-${GetAlbumArtId({
             albumAuthor: songs[0].metadata.albumArtist,
             year: songs[0].metadata.year,
             albumName: songs[0].metadata.album
-        })}` : `${contentType === "playlist" ? "PlaylistImg" : "ArtistImg"}-${contentType === "playlist" ? playlistId : stateId ?? songs[0].metadata[contentType === "artist" ? "artist" : "albumArtist"]}`;
+        })}` : `${isFromRecentlyPlayed ? "FromRecentlyPlayed" : ""}${contentType === "playlist" ? "PlaylistImg" : "ArtistImg"}-${contentType === "playlist" ? playlistId : stateId ?? songs[0].metadata[contentType === "artist" ? "artist" : "albumArtist"]}`;
         if (!skipHistoryUrl) {
             const params = new URLSearchParams(window.location.hash.substring(1));
             params.set("appSection", "metadataList");
@@ -378,8 +384,9 @@
                     if (currentAlbumIndex !== -1) {
                         allMetadataLoaded[currentAlbumIndex][0] = newId;
                     }
-                    history.replaceState(`AArt-${newId}`, "");
-                    HistoryHandler.prevImageId = `AArt-${newId}`;
+                    HistoryHandler.backContext.removeAlbumNameFromHomeTab && HistoryHandler.backContext.removeAlbumNameFromHomeTab(history.state.substring(history.state.indexOf("-") + 1)); // Since the information in the array used in the Home view can't be updated from here
+                    history.replaceState(`${isFromRecentlyPlayed ? "FromRecentlyPlayed" : ""}AArt-${newId}`, "");
+                    HistoryHandler.prevImageId = `${isFromRecentlyPlayed ? "FromRecentlyPlayed" : ""}AArt-${newId}`;
                 }
             }} albumArtDb={databases.albumArtDb} metadataDb={databases.metadataDb} albumArt={outputAlbumArtSrc} {songs}></AlbumInformationEditor>
         {:else if showMetadataEditor !== "none"}
@@ -389,7 +396,7 @@
                 if (typeof removeFromList !== "undefined") { // We need to remove an item from the current list, probably because their album/artist/etc name has been changed. 
                 // NOTE: This function is never called from the "Tracks" or "Playlist" context.
                     const item = [songs[removeFromList]];
-                    let newIds = contentType === "artist" || contentType === "albumArtist" ? item[0].metadata[contentType === "artist" ? "artist" : "albumArtist"].split(GetGroupingRegex(contentType === "albumArtist")).map(i => `ArtistImg-${i.trim()}`) : [`AArt-${GetAlbumArtId({
+                    let newIds = contentType === "artist" || contentType === "albumArtist" ? item[0].metadata[contentType === "artist" ? "artist" : "albumArtist"].split(GetGroupingRegex(contentType === "albumArtist")).map(i => `${isFromRecentlyPlayed ? "FromRecentlyPlayed" : ""}ArtistImg-${i.trim()}`) : [`${isFromRecentlyPlayed ? "FromRecentlyPlayed" : ""}AArt-${GetAlbumArtId({
                         albumAuthor: item[0].metadata.albumArtist,
                         year: item[0].metadata.year,
                         albumName: item[0].metadata.album
@@ -654,6 +661,10 @@
                                 AudioManager.audioContext.playlistId = playlistId ?? null;
                                 AudioManager.audioContext.playlistStartPosition = i;
                                 AudioManager.audioContext.queueIdStart = AudioManager.audioContext.queue[0].queueId;
+                                UpdateRecentlyPlayed({ // Add the played content to the recently played tracks
+                                    id: history.state.substring(history.state.indexOf("-") + 1),
+                                    type: contentType === "albumArtist" ? "albumartist" : (contentType ?? "album")
+                                });
                             }}
                         >
                             <span>{song.metadata.title}</span>

@@ -6,6 +6,7 @@
     import type { DatabaseContainer } from "../../../ts/Database/DatabaseInterfaces";
     import type { InfoProps, MetadataSource } from "../../../ts/Player/PlayerInterfaces";
     import CheckOpenedResource from "../../../ts/SvelteComponentsHelpers/CheckOpenedResource";
+    import AddLongPressEventForHomepage from "../../../ts/SvelteComponentsHelpers/AddLongPressEventForHomepage";
     let {databases, albumId, entries, updateContent}: {
         /**
          * Object that contains all the IndexedDatabases used by the application
@@ -41,6 +42,7 @@
     class="emptyButton card"
     style="height: auto;"
     use:CheckOpenedResource={albumId}
+    use:AddLongPressEventForHomepage={{id: albumId, type: "album"}}
     onclick={async () => {
         const albumArt = await GetAlbumArt({
             db: databases?.albumArtDb,

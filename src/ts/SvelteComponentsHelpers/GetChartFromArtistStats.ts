@@ -315,16 +315,11 @@ export function getWeekAndSongDatasetForAlbumSongs(stat: ArtistStats, type: "wee
                 type: "bar",
                 data: {
                     labels: weekDayLabels,
-                    datasets: [{
-                        data: (() => {
-                            const outputArr = Array(7).fill(0);
-                            for (const song of stat.songs) {
-                                for (let i = 0; i < song.data.msPlayedAtWeekDay.length; i++) outputArr[i] += (song.data.msPlayedAtWeekDay[i] ?? 0)
-                            }
-                            return outputArr
-                        })(),
-                        backgroundColor: Settings.customChartColors
-                    }]
+                    datasets: stat.songs.map((i, index) => {return {
+                        label: i.songMetadata.metadata.title,
+                        data: i.data.msPlayedAtWeekDay,
+                        backgroundColor: Settings.customChartColors[index % Settings.customChartColors.length]
+                    }})
                 },
                 options: chartOptions
             } as ChartConfiguration

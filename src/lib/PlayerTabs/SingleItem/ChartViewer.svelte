@@ -31,13 +31,13 @@
          */
         exportInfo: {
             /**
-             * The title that'll be added on top of the chart
-             */
-            title: string,
-            /**
              * A string that indicates the interval to which the chart refers to
              */
-            dateInterval: string
+            dateInterval: string,
+            alternativeTitles: {
+                description: string,
+                title: string
+            }[]
     }} = $props();
     let chartType = $state("bar");
     /**
@@ -117,17 +117,21 @@
      * If grid lines should be visible when exporting the chart
     */
     let showGridLines = $state(true);
+    /**
+     * The position in the `alternativeTitles` array of the selected title
+    */
+    let selectedTitleOption = $state(0);
     $effect(() => {
-        async function rerenderChart(exportCanvas: HTMLCanvasElement, colors: typeof exportColors, showBackgroundColor: boolean, showGridLines: boolean) {
+        async function rerenderChart(exportCanvas: HTMLCanvasElement, colors: typeof exportColors, showBackgroundColor: boolean, showGridLines: boolean, selectedTitleOption: number) {
             const ctx = exportCanvas.getContext("2d");
             ctx?.clearRect(0, 0, exportCanvas.width, exportCanvas.height);
-            ctx?.drawImage(await ExportChart({type: exportInfo.title, dateInterval: exportInfo.dateInterval, chart: parsedObj, colors: {
+            ctx?.drawImage(await ExportChart({type: exportInfo.alternativeTitles[selectedTitleOption].title, dateInterval: exportInfo.dateInterval, chart: parsedObj, colors: {
                 ...colors,
                 background: showBackgroundColor ? colors.background : undefined,
                 gridLines: showGridLines ? colors.gridLines : undefined
             }}), 0, 0)
         }
-        if (exportCanvas) rerenderChart(exportCanvas, exportColors, showBackgroundColor, showGridLines);
+        if (exportCanvas) rerenderChart(exportCanvas, exportColors, showBackgroundColor, showGridLines, +selectedTitleOption);
     })
 </script>
 <div>
@@ -168,6 +172,13 @@
             </div>
             <div class="maxWidth">
                 <Card secondCard={true}>
+                    <label class="flex hcenter gap">
+                        {lang("Title type")}: <select bind:value={selectedTitleOption}>
+                            {#each exportInfo.alternativeTitles as titleOption, i}
+                            <option value={i}>{titleOption.description}</option>
+                            {/each}
+                        </select>
+                    </label><br>
                     <label class="flex hcenter gap">
                         <input type="checkbox" bind:checked={showBackgroundColor}>
                         {lang("Background color")}: <input type="color" bind:value={exportColors.background}>

@@ -13,6 +13,8 @@
     import AutoRevokeUrl from "../../ts/SvelteComponentsHelpers/AutoRevokeUrl";
     import ShowNewPlaylist from "../../ts/SvelteComponentsHelpers/ShowNewPlaylist";
     import CheckOpenedResource from "../../ts/SvelteComponentsHelpers/CheckOpenedResource";
+    import getMetadataOfPlaylist from "../../ts/DataFetcher/GetMetadataOfPlaylist";
+    import AddLongPressEventForHomepage from "../../ts/SvelteComponentsHelpers/AddLongPressEventForHomepage";
 
     let {metadata, databases, updateContent, passPlaylists}: {
         /**
@@ -52,23 +54,7 @@
      * A list of the items that should be shown in the list. It might be filtered.
      */
     let itemToShow = $derived(playlists);
-    /**
-     * Get the metadata of all the songs in a single playlist
-     * @param list the list to read
-     */
-    function getMetadata(list: PlaylistContainer) {
-        const result: MetadataSourcePlaylist[] = [];
-        const flatMetadata = metadata?.flatMap(i => i[1]);
-        if (!flatMetadata) return;
-        for (const item of list.data.contents) {
-            const file = flatMetadata.find(i => i.trackId === item);
-            if (file) result.push({
-                ...file,
-                playlistId: crypto.randomUUID() // Let's add a random playlist ID so that the album viewer can uniquely identify the songs, even if they have the same track ID
-            });
-        }
-        return result;
-    }   
+     
     /**
      * The number of items to render
      */
@@ -120,12 +106,12 @@
        <div class="flex hcenter gap wrap" style="align-items: stretch"> 
             {#each itemToShow as playlistItem, i (playlistItem.id)}
                 {#if renderItems + (10 * Math.max(1, Math.floor(window.innerWidth / 400))) > i}
-                <button class="emptyButton flex hcenter gap card maxWidth" style="display: flex; height: auto;" use:CheckOpenedResource={{id: playlistItem.id, waitUntilImageMap: `PlaylistImg-${playlistItem.id}`}} onclick={(e) => {
+                <button use:AddLongPressEventForHomepage={{id: playlistItem.id, type: "playlist"}} class="emptyButton flex hcenter gap card maxWidth" style="display: flex; height: auto;" use:CheckOpenedResource={{id: playlistItem.id, waitUntilImageMap: `PlaylistImg-${playlistItem.id}`}} onclick={(e) => {
                     if ((e.target as HTMLElement).getAttribute("data-disableclick") !== null || (e.target as HTMLElement).closest("[data-disableclick]")) return; // Avoid playing the track if the user clicked on the three dots
-                    const metadata = getMetadata(playlistItem);
-                    if (!metadata || metadata.length === 0) return;
+                    const newMetadata = getMetadataOfPlaylist(playlistItem, metadata);
+                    if (!newMetadata || newMetadata.length === 0) return;
                     updateContent({
-                        metadata: metadata,
+                        metadata: newMetadata,
                         type: "playlist",
                         albumArt: imageMap.get(`PlaylistImg-${playlistItem.id}`)?.src,
                         albumArtImg: imageMap.get(`PlaylistImg-${playlistItem.id}`),

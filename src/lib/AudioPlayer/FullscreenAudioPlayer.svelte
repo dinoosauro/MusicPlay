@@ -358,6 +358,7 @@
                     style="max-height: 40vh; display: flex"
                     class="flex wcenter"
                 >
+                <span style="border-radius: 12px; animation: unset !important; transition: unset !important;">
                     <!-- svelte-ignore a11y_click_events_have_key_events -->
                     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
                     <img
@@ -383,6 +384,10 @@
             }, ...(rightDivContainer ? [{element: rightDivContainer, opacityChange: "end" as "end"}] : [])
         ])
         isImageTransitionDone = true;
+        setTimeout(() => { // Fix for mobile devices: when doing a crossfade animation between the album arts, the box shadow is bugged. By moving it to the span we'll face no issues. However, when the user opens the fullscreen player, a black square appears if the box shadow transition is done to the span and not to the image. So, we need to move it after this transition has been done.
+            ((e.target as HTMLElement).parentElement as HTMLElement).classList.add("imgBoxShadow");
+            ((e.target as HTMLElement)).classList.remove("imgBoxShadow");
+        }, 2000)
         }}
     onerror={async (e) => {
         !isImageTransitionDone && await imageTransitionCallback(e.target as HTMLImageElement, [
@@ -406,10 +411,11 @@
         }}
                         src={initAlbumArt}
                         bind:this={permanentImg}
-                        class="imgBoxShadow mainImageSize opacity hover"
+                        class="imgBoxShadow mainImageSize opacity hover permitClick"
                         style="border-radius: 12px; object-fit: cover;"
                         alt={lang("Album art")}
                     />
+                    </span>
                 </div>
                 <div class="opacity" bind:this={infoContainer} style="padding: 10px;">
                     <h2 bind:this={songTitle}>

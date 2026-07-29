@@ -152,8 +152,6 @@
         if (easyMode) checkResize();
     })
 </script>
-<Card secondCard={true}>
-    <h4>{lang("Equalizer")}:</h4>
     <p>{lang("Create your own equalizer: pick the range of frequencies to edit and choose the effect to apply")}.</p>
     <label class="flex hcenter gap">
         <input type="checkbox" bind:checked={easyMode} onchange={() => {
@@ -233,7 +231,7 @@
         </div><br>
         <div class="flex hcenter gap">
             {#if !showLessControlsInEasyMode}
-            <button class="emptyButton maxWidth" onclick={() => {
+            <button class="emptyButton maxWidth btn" onclick={() => {
                 const name = prompt(lang("Pick a name for the new preset"));
                 if (!name) return;
                 const eqObj: EqualizerPreset = {
@@ -244,17 +242,17 @@
                 Settings.customEqPresets.push(eqObj);
                 availablePresets.push(eqObj);
             }}>
-                <u>{lang("Save as custom preset")}</u>
+                {lang("Save as custom preset")}
             </button>
             {/if}
-            <button class="emptyButton maxWidth" onclick={() => {
+            <button class="emptyButton maxWidth btn" onclick={() => {
                 for (const item of easyModeRangeContainer.querySelectorAll("input[type=range]")) {
                     (item as HTMLInputElement).value = "30";
                     item.dispatchEvent(new Event("input"));
                     item.dispatchEvent(new Event("change"));
                 }
             }}>
-                <u>{lang("Reset")}</u>
+                {lang("Reset")}
             </button><br>
         </div>
     </Card>
@@ -268,7 +266,7 @@
             {/each}
         </select></label>
         <label class="flex hcenter gap">{lang("Decibels increase/decrease")}: <input type="number" style="background-color: var(--secondcard);" bind:value={dbIncrease}></label><br>
-        <button class="emptyButton maxWidth" onclick={() => createNew()}><u>{lang("Add frequency")}</u></button>
+        <button class="emptyButton maxWidth btn" onclick={() => createNew()}>{lang("Add frequency")}</button>
     </Card><br>
     <u>{lang("Already-added items")}:</u><br><br>
     {#each itemsToDisplay as item, i (item.id)}
@@ -281,8 +279,7 @@
             {/each}
         </select></label>
         <label class="flex hcenter gap">{lang("Decibels")}: <input type="number" style="background-color: var(--secondcard);" min="-30" max="30" bind:value={Settings.equalizer[i].db} onchange={() => updateAlreadyExistingValues(i)}></label><br>
-        <button class="emptyButton maxWidth" onclick={() => deleteEq(i)}><u>{lang("Delete")}</u></button>
+        <button class="emptyButton maxWidth btn" onclick={() => deleteEq(i)}>{lang("Delete")}</button>
     </Card>
     {/each}
     {/if}
-</Card>

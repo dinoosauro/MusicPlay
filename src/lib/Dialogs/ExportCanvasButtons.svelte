@@ -14,7 +14,7 @@ const {canvas, fileName}: {
 </script>
 
 <div class="flex hcenter gap">
-        <button class="emptyButton maxWidth" onclick={() => {
+        <button class="emptyButton maxWidth btn" onclick={() => {
             canvas.toBlob((blob) => {
                 if (!blob) return;
                 const a = Object.assign(document.createElement("a"), {
@@ -25,10 +25,10 @@ const {canvas, fileName}: {
                 setTimeout(() => URL.revokeObjectURL(a.href), 1000);
             })
         }}>
-            <u>{lang("Save image")}</u>
+            {lang("Save image")}
         </button>
         {#if typeof navigator.share === "function"}
-        <button class="emptyButton maxWidth" onclick={() => {
+        <button class="emptyButton maxWidth btn" onclick={() => {
             canvas.toBlob((blob) => {
                 if (!blob) return;
                 navigator.share({
@@ -36,7 +36,7 @@ const {canvas, fileName}: {
                 })
             })
         }}>
-            <u>{lang("Share image")}</u>
+            {lang("Share image")}
         </button>
         {/if}
     </div>

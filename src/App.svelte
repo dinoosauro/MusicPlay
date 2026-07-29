@@ -47,6 +47,8 @@
     import SelectableMusic from "./ts/SvelteComponentsHelpers/SelectableMusic";
     import Convert from "./lib/Dialogs/Convert.svelte";
     import Stats from "./lib/PlayerTabs/Stats.svelte";
+    import Home from "./lib/PlayerTabs/Home.svelte";
+    import SettingsObject from "./ts/Settings"
   let haveSongsBeenAdded = $state(
     localStorage.getItem("MusicPlayer-ItemsAdded") === "1",
   );
@@ -71,7 +73,7 @@
    * The current page that is being shown (ex: all the albums, all the playlists etc).
    * Note that this property won't be updated if the user goes in the fullscreen mode, or opens the details of a single album/playlist etc.
    */
-  let pageShown = $state("albumView");
+  let pageShown = $state(SettingsObject.homepage.defaultView);
   /**
    * Show the dropdown that enables the user to switch between sections
    */
@@ -109,7 +111,7 @@
     /**
      * The type used to divide the `loadedMetadata` object.
      */
-  let sortingType: PossibleSortingOptions = new URLSearchParams(window.location.hash.substring(1)).get("pageShown") ? getSortingType(new URLSearchParams(window.location.hash.substring(1)).get("pageShown") as "authors") : "album";
+  let sortingType: PossibleSortingOptions = new URLSearchParams(window.location.hash.substring(1)).get("pageShown") ? getSortingType(new URLSearchParams(window.location.hash.substring(1)).get("pageShown") as "authors") : getSortingType(pageShown);
   /**
    * The number of selected items. If it's not undefined, a pop-up will be displayed in the bottom part of the webpage to let the user do some action with the selected tracks.
    */
@@ -158,9 +160,9 @@
     };
     const params = new URLSearchParams(window.location.hash.substring(1));
     const id = params.get("pageShown");
-    loadedMetadata = await LoadMetadata(databases, getSortingType(id || "albumView"));
-    navigator.storage && navigator.storage.persist && navigator.storage.persist();
-    if (id === "albumView" || id === "trackView" || id === "artistsView" || id === "albumArtistsView" || id === "playlistsView" || id === "statsView") pageShown = id;
+    loadedMetadata = await LoadMetadata(databases, getSortingType(id || pageShown));
+    navigator.storage && navigator.storage.persist && navigator.storage.persist().then((res) => console.log("Persistent storage enabled:", res));
+    if (id === "albumView" || id === "trackView" || id === "artistsView" || id === "albumArtistsView" || id === "playlistsView" || id === "statsView" || id === "homeView") pageShown = id;
     haveSongsBeenAdded = true; // Since, if there are no entries, the length of loadedMetadata will be 0
     AudioManager.updateSongDb(databases.songDb, databases.albumArtDb, databases.songStatsDb, databases.metadataDb); // Update the databases used by the AudioManager
     history.scrollRestoration = "manual"; // Avoid that the browser restores the scroll position when going forwards or backwards the webpage.
@@ -277,21 +279,25 @@
            */
           const albumEntry = loadedMetadata.find((i) => i[0] === state.substring(state.indexOf("-") + 1));
           if (albumEntry) {
-            const albumArt = state.startsWith("ArtistImg") || state.startsWith("PlaylistImg") // Since for artists and playlist there isn't an automatic cache of the colors used to create the fallback album art, we'll try to get the same src used in the artist/playlist list viewer. We don't need to do this for the album art part, since the color used for the fallback album art is cached.
+            /**
+             * The State, with the "FromRecentlyPlayed" start string removed so that the type can be compared
+            */
+            const stateCheck = state.startsWith("FromRecentlyPlayed") ? state.substring("FromRecentlyPlayed".length) : state;
+            const albumArt = stateCheck.startsWith("ArtistImg") || stateCheck.startsWith("PlaylistImg") // Since for artists and playlist there isn't an automatic cache of the colors used to create the fallback album art, we'll try to get the same src used in the artist/playlist list viewer. We don't need to do this for the album art part, since the color used for the fallback album art is cached.
               ? (imageMap.get(state)?.src ??
                 (await ArtistImageManager.fetchImage({
                   author: state.substring(state.indexOf("-") + 1),
-                  artistImageDb: state.startsWith("PlaylistImg") ? databases?.playlistImgDb as IDBDatabase : databases?.artistImgDb as IDBDatabase,
+                  artistImageDb: stateCheck.startsWith("PlaylistImg") ? databases?.playlistImgDb as IDBDatabase : databases?.artistImgDb as IDBDatabase,
                 })))
               : await GetAlbumArt({
                   db: databases?.albumArtDb as IDBDatabase,
-                  id: state.substring("AArt-".length),
+                  id: stateCheck.substring("AArt-".length),
                 });
             await AnimationHandler.stopAnimation();
             // Update information used to show the album/artist metadata viewer
             selectedInformation = {
               metadata: albumEntry[1],
-              type: state.startsWith("ArtistImg") ? "artist" : state.startsWith("PlaylistImg") ? "playlist" : "album",
+              type: stateCheck.startsWith("ArtistImg") ? "artist" : stateCheck.startsWith("PlaylistImg") ? "playlist" : "album",
               albumArt: albumArt ?? undefined,
               albumArtImg: !selectedInformation
                 ? imageMap.get(state)
@@ -311,75 +317,86 @@
             /**
              * The destination image for the animation (so, the one contained in a button of the artists/album/playlist etc. section)
              */
-            const outputImage = imageMap.get(HistoryHandler.prevImageId);
-            const backButton = mediaPlayerObject.backButtonContainer?.firstChild as HTMLElement | undefined;
-            let failedAnimation = false;
-            if (mediaPlayerObject.image && outputImage && backButton && mediaPlayerObject.container)
-              await AnimationHandler.imageAnimationHandler({
-                sourceImage: mediaPlayerObject.image,
-                outputImage,
-                elements: [
-                  {
-                    element: mediaPlayerObject.image,
-                    opacityChange: "end",
-                    output: "0",
-                  },
-                  ...Array.from(
-                    mediaPlayerObject.container.querySelectorAll(".opacity"),
-                  ).map((i) => {
-                    return {
-                      element: i as HTMLElement,
+            for (const outputImage of [imageMap.get(HistoryHandler.prevImageId)]) {           
+              const backButton = mediaPlayerObject.backButtonContainer?.firstChild as HTMLElement | undefined;
+              let failedAnimation = false;
+              if (mediaPlayerObject.image && outputImage && backButton && mediaPlayerObject.container)
+                await AnimationHandler.imageAnimationHandler({
+                  sourceImage: mediaPlayerObject.image,
+                  outputImage,
+                  elements: [
+                    {
+                      element: mediaPlayerObject.image,
+                      opacityChange: "end",
+                      output: "0",
+                    },
+                    ...Array.from(
+                      mediaPlayerObject.container.querySelectorAll(".opacity"),
+                    ).map((i) => {
+                      return {
+                        element: i as HTMLElement,
+                        opacityChange: "start",
+                        output: "0",
+                      } as OpacityChange;
+                    }),
+                    {
+                      element: outputImage,
+                      opacityChange: "end",
+                      output: "1",
+                    },
+                    {
+                      element: backButton,
                       opacityChange: "start",
                       output: "0",
-                    } as OpacityChange;
-                  }),
-                  {
-                    element: outputImage,
-                    opacityChange: "end",
-                    output: "1",
-                  },
-                  {
-                    element: backButton,
-                    opacityChange: "start",
-                    output: "0",
-                  },
-                ],
-              }); else failedAnimation = true;
-            if (HistoryHandler.backContext.delete && loadedMetadata) { // The back operation has been done automatically by the application since the last element of an entry has been either removed or moved. We'll make an opacity transition, and later delete it.
-              HistoryHandler.backContext.delete = false;
-              if (!selectedInformation.playlistObject) { // The item deleted is not a playlist, so we need to splice the `loadedMetadata` object
-                const mainBtn = outputImage?.closest("button");
-                if (mainBtn) { // Opacity animation before removing it
-                  mainBtn.style.opacity = "0";
-                  await new Promise<void>(res => mainBtn.animate([{opacity: "1"},{opacity: "0"}], {duration: 400, easing: "ease-in-out"}).addEventListener("finish", () => res()));
-                }
-                // Let's now delete the empty entry from the list. Svelte will delete it also from the DOM.
-                const index = loadedMetadata.findIndex((i) => i[0] === HistoryHandler.prevImageId.substring(HistoryHandler.prevImageId.indexOf("-") + 1)); 
-                if (index !== -1) loadedMetadata.splice(index, 1);
-                if (databases) IndexedDatabase.remove({db: selectedInformation.type === "albumArtist" || selectedInformation.type === "artist" ? databases.artistImgDb : databases.albumArtDb, query: HistoryHandler.prevImageId, request: selectedInformation.type === "albumArtist" || selectedInformation.type === "artist" ? "artistImg" : "albumArt" });
-              } else if (HistoryHandler.backContext.deletePlaylist) { // The item to delete is a playlist, and we have the function that'll delete it from the Playlists section. This is important since the Playlists object isn't stored in the main App component, since the user might never use it (and therefore it's useless to load it and to keep it always in memory). Since the playlist object used by the Playlists component is isolated, we'll need to call a function exposed from that component to delete it from the DOM, while here in the App section we can delete the playlist entry.
-                  for (let i = 0; i < selectedInformation.playlistObject.length; i++) {
-                    const item = selectedInformation.playlistObject[i];
-                    if (item.data.contents.length === 0) {
-                    const mainBtn = imageMap.get(`PlaylistImg-${item.id}`)?.closest("button");
-                    if (mainBtn) {
+                    },
+                  ],
+                }); else failedAnimation = true;
+              if (HistoryHandler.backContext.delete && loadedMetadata) { // The back operation has been done automatically by the application since the last element of an entry has been either removed or moved. We'll make an opacity transition, and later delete it.
+                HistoryHandler.backContext.delete = false;
+                if (!selectedInformation.playlistObject) { // The item deleted is not a playlist, so we need to splice the `loadedMetadata` object
+                  const promiseStore: Promise<void>[] = [];
+                  for (const mainBtn of [outputImage?.closest("button"), (HistoryHandler.prevImageId.startsWith("FromRecentlyPlayed") ? imageMap.get(HistoryHandler.prevImageId.substring("FromRecentlyPlayed".length)) : imageMap.get(`FromRecentlyPlayed${HistoryHandler.prevImageId}`))?.closest("button")]) { // In the Home tab, there might be the same element both in the "Recently played" card and one of the other cards. We'll do the transition on both, obviously if there's a matching element
+                    if (mainBtn) { // Opacity animation before removing it
                       mainBtn.style.opacity = "0";
-                      await new Promise<void>(res => mainBtn.animate([{opacity: "1"},{opacity: "0"}], {duration: 400, easing: "ease-in-out"}).addEventListener("finish", () => res()));
+                      promiseStore.push(new Promise<void>(res => mainBtn.animate([{opacity: "1"},{opacity: "0"}], {duration: 400, easing: "ease-in-out"}).addEventListener("finish", () => res())));
                     }
-                    HistoryHandler.backContext.deletePlaylist(item.id);
-                      if (databases) {
-                        await IndexedDatabase.remove({
-                            db: databases.playlistImgDb,
-                            query: item.id,
-                            request: "playlistImg"
-                        });
-                        await IndexedDatabase.remove({
-                            db: databases.playlistDb,
-                            query: item.id,
-                            request: "playlist"
-                        });
+                  }
+                  await Promise.all(promiseStore);
+                  // Let's now delete the empty entry from the list. Svelte will delete it also from the DOM.
+                  const index = loadedMetadata.findIndex((i) => i[0] === HistoryHandler.prevImageId.substring(HistoryHandler.prevImageId.indexOf("-") + 1)); 
+                  if (index !== -1) loadedMetadata.splice(index, 1);
+                  if (databases) IndexedDatabase.remove({db: selectedInformation.type === "albumArtist" || selectedInformation.type === "artist" ? databases.artistImgDb : databases.albumArtDb, query: HistoryHandler.prevImageId, request: selectedInformation.type === "albumArtist" || selectedInformation.type === "artist" ? "artistImg" : "albumArt" });
+                  HistoryHandler.backContext.deleteFromHomeTab && HistoryHandler.backContext.deleteFromHomeTab({type: selectedInformation.type === "albumArtist" ? "albumartist" : selectedInformation.type, id: HistoryHandler.prevImageId.substring(HistoryHandler.prevImageId.indexOf("-") + 1)}); // Let's remove the elements from the home tab (since otherwise they would still occupy space)
+                } else if (HistoryHandler.backContext.deletePlaylist || HistoryHandler.backContext.deleteFromHomeTab) { // The item to delete is a playlist, and we have the function that'll delete it from the Playlists section. This is important since the Playlists object isn't stored in the main App component, since the user might never use it (and therefore it's useless to load it and to keep it always in memory). Since the playlist object used by the Playlists component is isolated, we'll need to call a function exposed from that component to delete it from the DOM, while here in the App section we can delete the playlist entry.
+                    for (let i = 0; i < selectedInformation.playlistObject.length; i++) {
+                      const item = selectedInformation.playlistObject[i];
+                      if (item.data.contents.length === 0) {
+                      const mainBtns = [imageMap.get(`PlaylistImg-${item.id}`)?.closest("button"), imageMap.get(`FromRecentlyPlayedPlaylistImg-${item.id}`)?.closest("button")];
+                      const promiseStore: Promise<void>[] = [];
+                      for (const mainBtn of mainBtns) {
+                        if (mainBtn) {
+                          mainBtn.style.opacity = "0";
+                          promiseStore.push(new Promise<void>(res => mainBtn.animate([{opacity: "1"},{opacity: "0"}], {duration: 400, easing: "ease-in-out"}).addEventListener("finish", () => res())));
+                        }
                       }
-                      i--;
+                      await Promise.all(promiseStore);
+                      HistoryHandler.backContext.deletePlaylist && HistoryHandler.backContext.deletePlaylist(item.id);
+                      HistoryHandler.backContext.deleteFromHomeTab && HistoryHandler.backContext.deleteFromHomeTab({type: "playlist", id: item.id});
+                        if (databases) {
+                          await IndexedDatabase.remove({
+                              db: databases.playlistImgDb,
+                              query: item.id,
+                              request: "playlistImg"
+                          });
+                          await IndexedDatabase.remove({
+                              db: databases.playlistDb,
+                              query: item.id,
+                              request: "playlist"
+                          });
+                        }
+                        selectedInformation.playlistObject.splice(i, 1);
+                        i--;
+                      }
                     }
                   }
                 }
@@ -491,9 +508,9 @@
                 loadedMetadata?.reverse();
                 showFilterDropdownMenu = false;
               }
-              if (id === "albumView" || id === "trackView" || id === "artistsView" || id === "albumArtistsView" || id === "playlistsView" || id === "statsView") {
+              if (id === "albumView" || id === "trackView" || id === "artistsView" || id === "albumArtistsView" || id === "playlistsView" || id === "statsView" || id === "homeView") {
                 showFilterDropdownMenu = false;
-                if (databases && id !== "statsView") {
+                if (databases && id !== "statsView" && id !== "homeView") {
                   sortingType = getSortingType(id);
                   loadedMetadata = await LoadMetadata(databases, sortingType);
                 }
@@ -513,6 +530,7 @@
                   id: "changeLibView",
                 },
                 categoryItems: [
+                  {icon: "home", text: lang("Home view"), id: "homeView"},
                   { icon: "cd", text: lang("Album view"), id: "albumView" },
                   { icon: "songNote", text: lang("Track view"), id: "trackView" },
                   {
@@ -787,6 +805,11 @@
           <Playlists passPlaylists={(item) => (playlistObjectInUse = item)} metadata={loadedMetadata} {databases} updateContent={(content) => (selectedInformation = content)}></Playlists>
           {:else if pageShown === "statsView"}
             <Stats metadata={loadedMetadata} {databases}></Stats>
+          {:else if pageShown === "homeView"}
+            <Home {databases} updateLoadedMetadata={(metadata, type) => {
+              loadedMetadata = metadata;
+              sortingType = type
+            }} updateContent={(content) => (selectedInformation = content)}></Home>
           {/if}
           <div use:registerEmptySpace></div>
           {/key}
@@ -805,6 +828,7 @@
             playlistContainer={selectedInformation.playlistObject}
             playlistId={selectedInformation.playlistId}
             stateId={selectedInformation.passedId}
+            isFromRecentlyPlayed={selectedInformation.isFromRecentlyPlayed}
             imageTransitionCallback={async (img, elements) => {
               if (selectedInformation?.albumArtImg)
                 await AnimationHandler.imageAnimationHandler({

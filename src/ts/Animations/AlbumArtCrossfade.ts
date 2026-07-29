@@ -74,9 +74,11 @@ const obj = {
         for (const interval of intervalList) clearInterval(interval);
         await Promise.all(albumArts.map((element, i) => new Promise<void>(res => { // Now, let's change the original image source. When the image has been loaded, resolve the promise
             function loadItem() {
+                element.style.transition = "unset";
                 element.style.opacity = "1";
                 imagesToRemove[i].classList.remove("imgBoxShadow");
                 setTimeout(() => {
+                    element.style.transition = "";
                     imagesToRemove[i].remove();
                     element.removeEventListener("load", loadItem);
                     res();

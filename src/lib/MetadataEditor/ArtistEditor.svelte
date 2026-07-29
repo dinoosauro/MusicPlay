@@ -37,10 +37,11 @@
         <SaveAndCloseButton saveFn={async () => {
                 const req = await fetch(img.src);
                 IndexedDatabase.set({db: artistImgDb, request: "artistImg", object: {id: artistId, data: {img: await req.blob()}}});
-                const listImg = imageMap.get(`${"ArtistImg"}-${artistId}`);
-                if (listImg && listImg.src !== img.src) {
-                    URL.revokeObjectURL(listImg.src);
-                    listImg.src = img.src;
+                for (const listImg of [imageMap.get(`${"ArtistImg"}-${artistId}`), imageMap.get(`FromRecentlyPlayedArtistImg-${artistId}`)]) {
+                    if (listImg && listImg.src !== img.src) {
+                        URL.revokeObjectURL(listImg.src);
+                        listImg.src = img.src;
+                    }
                 }
                 closeCallback(img.src);
         }} closeFn={closeCallback}></SaveAndCloseButton>

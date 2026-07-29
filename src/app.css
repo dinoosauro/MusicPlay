@@ -505,3 +505,7 @@ label.flex.hcenter.gap > input:not([type=checkbox]), label.flex.hcenter.gap > se
       height: 100%;
       box-sizing: border-box;
     }
+
+    img:not(.permitClick) {
+    pointer-events: none;
+    }

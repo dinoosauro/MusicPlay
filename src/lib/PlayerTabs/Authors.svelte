@@ -12,6 +12,7 @@
     import Card from "../Card.svelte";
     import IconsManager from "../../ts/Icons/IconsManager";
     import { cubicInOut } from "svelte/easing";
+    import AddLongPressEventForHomepage from "../../ts/SvelteComponentsHelpers/AddLongPressEventForHomepage";
 
     const { databases, updateContent, isAlbumArtist, metadata }: { 
         /**
@@ -93,7 +94,7 @@
     <div class="flex hcenter gap wrap" style="align-items: stretch">
         {#each itemToShow as [name, entries], i (name)}
             {#if renderItems + (10 * Math.max(1, Math.floor(window.innerWidth / 400))) > i}
-            <button use:CheckOpenedResource={{id: name, waitUntilImageMap: `ArtistImg-${name}`}} onclick={() => {
+            <button use:AddLongPressEventForHomepage={{id: name, type: isAlbumArtist ? "albumartist" : "artist"}} use:CheckOpenedResource={{id: name, waitUntilImageMap: `ArtistImg-${name}`}} onclick={() => {
                 updateContent({
                 metadata: entries,
                 passedId: name,

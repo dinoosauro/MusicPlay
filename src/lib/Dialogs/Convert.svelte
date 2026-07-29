@@ -179,7 +179,7 @@ import Dialog from "../Dialog.svelte";
             {/if}
         </Card><br>
         {#if downloadFile || replaceFile}
-            <button in:slide={{duration: 200, easing: cubicInOut}} out:slide={{duration: 200, easing: cubicInOut}} class="emptyButton maxWidth" onclick={async () => {
+            <button in:slide={{duration: 200, easing: cubicInOut}} out:slide={{duration: 200, easing: cubicInOut}} class="emptyButton maxWidth btn" onclick={async () => {
                 if (!downloadFile && !replaceFile) return;
                 /**
                  * The quality that should be used for the output bitrate. If it's a number, the -q:a bitrate should be used, otherwise the -b:a (in this case, the final `k` is already added to the string)
@@ -319,7 +319,7 @@ import Dialog from "../Dialog.svelte";
                     closeFn(); // And close the dialog
                 }, 25);
             }}>
-                <u>{lang("Convert")}</u>
+                {lang("Convert")}
             </button>
         {/if}
     {:else}

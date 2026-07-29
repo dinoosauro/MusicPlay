@@ -279,6 +279,7 @@
             songsPlayedPerHour: getChartFromArtistStats({albums: artistObject}, "albumsPerHour", true),
         }
         scrollToRegisteredItem("album");
+        topTracksOfAlbumNumber = stat.songs.length;
         expandAlbumView = [stat, !!isFromArtist];
     }
     /**
@@ -348,6 +349,63 @@
      * How many artists should be displayed in the "Top artists listened by the user" (without any division) chart
      */
     let topArtistNumber = $state(10);
+    /**
+     * The number of top albums that should be displayed in the single artist view
+     */
+    let topAlbumsOfArtistNumber = $state(10);
+    /**
+     * The number of top tracks that should be displayed in the single artist view
+     */
+    let topTracksOfArtistNumber = $state(10);
+    /**
+     * The number of top tracks that should be displayed in the single album view
+     */
+    let topTracksOfAlbumNumber = $state(10);
+
+    /**
+     * Remove a part from the displayed dataset. This is used to display only some elements of the dataset (usually, the first ones)
+     * @param chart the source Chart object 
+     * @param num the maximum elements that should be displayed
+     * @param sliceLabel if the label should be sliced instead of the dataset
+     */
+    function sliceDataset(chart: ChartConfiguration, num: number, sliceLabel?: boolean) {
+        return {
+            ...chart,
+            data: {
+                ...chart.data,
+                labels: sliceLabel ? chart.data.labels?.slice(0, num) : chart.data.labels,
+                datasets: sliceLabel ? chart.data.datasets : chart.data.datasets.slice(0, num)
+            }
+        } as ChartConfiguration
+    }
+
+    /**
+     * Build all the title combinations available when exporting the chart
+     * @param entries an object array that contains the string to add, and its type
+     */
+    function buildTitle(entries: {str: string, isDivision?: boolean, isTopNumber?: boolean, isOnlyWith?: boolean}[]) {
+        let outputList: {description: string, title: string}[] = [];
+        for (const [description, [skipDivision, skipTopNumber, skipOnlyWith]] of [["Default", [false, false, false]], ["Without the division", [true, false, false]], ["Without the top number", [false, true, false]], ["Without the \"Only with\" text", [false, false, true]], ["Without the top number and the division", [true, true, false]], ["Without the top number and the \"Only with\" text", [false, true, true]], ["Without the division and the \"Only with\" text", [true, false, true]], ["Without the division, top number and the \"Only with\" text", [true, true, true]]]) {
+            // Let's first skip the entry if it would be the same as another one (so, if there is, for example, no "Only with" text)
+            if (skipDivision && !entries.some(i => i.isDivision)) continue;
+            if (skipTopNumber && !entries.some(i => i.isTopNumber)) continue;
+            if (skipOnlyWith && !entries.some(i => i.isOnlyWith)) continue;
+            let str = "";
+            for (const entry of entries) {
+                const newStr = entry.str.trim();
+                if (newStr === "") continue;
+                if (entry.isDivision && skipDivision) continue;
+                if (entry.isTopNumber && skipTopNumber) continue;
+                if (entry.isOnlyWith && skipOnlyWith) continue;
+                str += `${newStr[0] === "," ? "" : " "}${newStr}`;
+            };
+            outputList.push({
+                description: lang(description as string),
+                title: str.substring(1)
+            })
+        }
+        return outputList;
+    }
 </script>
 
 {#snippet Podium(data: StatsDisplayItem | [string, ArtistStats], position: 1 | 2 | 3, fetchAlbumArt?: "fetchalbum" | "no")}
@@ -578,8 +636,13 @@
                         </select> {lang("have you listened to music the most?")}</h4>
                         <Card secondCard={true}>
                             <ChartViewer exportInfo={{
-                                title: `${lang("Music playback divided by")} ${musicPlaybackInNumbersChoice === "day" ? lang("day of the month") : musicPlaybackInNumbersChoice === "week" ? lang("day of the week") : musicPlaybackInNumbersChoice === "daySingle" ? lang("day") : lang(musicPlaybackInNumbersChoice)}`,
-                                dateInterval
+                                dateInterval,
+                                alternativeTitles: buildTitle([{
+                                    str: lang("Music playback")
+                                }, {
+                                    str: `, ${lang("divided by S")} ${musicPlaybackInNumbersChoice === "day" ? lang("day of the month") : musicPlaybackInNumbersChoice === "week" ? lang("day of the week") : musicPlaybackInNumbersChoice === "daySingle" ? lang("day") : lang(musicPlaybackInNumbersChoice)}`,
+                                    isDivision: true
+                                }])
                             }} chartObject={
                             musicPlaybackInNumbersChoice === "daySingle" ? generalMsPlayed?.chart as ChartConfiguration :
                             musicPlaybackInNumbersChoice === "hour" ? {
@@ -750,6 +813,8 @@
                                     }
                                 }
                                 scrollToRegisteredItem("artist");
+                                topAlbumsOfArtistNumber = Object.keys(stat.albums).length;
+                                topTracksOfArtistNumber = stat.songs.length;
                                 expandArtistView = [name, stat];
                             }}>      
                                 {@render StatCard(
@@ -779,8 +844,18 @@
                     </select></h4>
                     <Card secondCard={true}>
                         <ChartViewer exportInfo={{
-                                title: `${lang("Top")} ${topArtistNumber} ${lang("artists divided by")} ${topArtistsPlayed === "hours" ? lang("hour") : topArtistsPlayed === "monthday" ? lang("day of the month") : topArtistsPlayed === "week" ? lang("day of the week") : lang(topArtistsPlayed)}`,
-                                dateInterval
+                                dateInterval,
+                                alternativeTitles: buildTitle([{
+                                    str: lang("Top")
+                                }, {
+                                    str: topArtistNumber.toString(),
+                                    isTopNumber: true
+                                }, {
+                                    str: lang("artists")
+                                }, {
+                                    str: `, ${lang("divided by")} ${topArtistsPlayed === "hours" ? lang("hour") : topArtistsPlayed === "monthday" ? lang("day of the month") : topArtistsPlayed === "week" ? lang("day of the week") : lang(topArtistsPlayed)}`,
+                                    isDivision: true
+                                }])
                             }} chartObject={(() => {
                             const outputObj: {[key: string]: ArtistStats} = {};
                             for (let i = 0; i < Math.min(topArtistNumber, artistsPlay.length); i++) {
@@ -834,8 +909,18 @@
                 </select></h4>
                 <Card secondCard={true}>
                     <ChartViewer exportInfo={{
-                            title: `${lang("Top")} ${topAlbumNumber} ${lang("albums divided by")} ${topAlbumsPlayed === "monthday" ? lang("day of the month") :  topAlbumsPlayed === "week" ? lang("day of the week") : lang(topAlbumsPlayed === "hours" ? "hour" : topAlbumsPlayed)}`,
-                            dateInterval
+                            dateInterval,
+                            alternativeTitles: buildTitle([{
+                                str: lang("Top")
+                            }, {
+                              str: topAlbumNumber.toString(),
+                              isTopNumber: true  
+                            }, {
+                                str: lang("albums")
+                            }, {
+                                str: `, ${lang("divided by")} ${topAlbumsPlayed === "monthday" ? lang("day of the month") :  topAlbumsPlayed === "week" ? lang("day of the week") : lang(topAlbumsPlayed === "hours" ? "hour" : topAlbumsPlayed)}`,
+                                isDivision: true
+                            }])
                         }} chartObject={(() => {
                         const outputObj: {[key: string]: ArtistStats} = {};
                         for (let i = 0; i < Math.min(topAlbumNumber, albumsPlay.length); i++) {
@@ -883,7 +968,9 @@
                     <i>{lang("Click on the album name above to see all the stats of the songs in that album")}.</i><br><br>
                     <Card secondCard={true}>
                         <h4 class="flex hcenter gap">
-                        {lang("Plays divided by album and organized")}
+                        {lang("Top")}
+                        <input type="number" style="width: 30px;" min="1" max={Object.keys(expandArtistView[1].albums).length} bind:value={topAlbumsOfArtistNumber}>
+                        {lang("albums, organized")}
                             <select style="width: fit-content;" bind:value={artistAlbumPlayed}>
                                 {#if expandArtistView[1].chart?.perAlbum}
                                     <option value="selectedTimeInterval">{lang("in the selected time interval")}</option>
@@ -900,13 +987,23 @@
                             </select><br><br>
                         </h4>
                         <ChartViewer exportInfo={{
-                            title: `${lang("Top albums of")} ${expandArtistView[0]}${artistAlbumPlayed === "selectedTimeInterval" ? "" : `, ${lang("divided by")} ${lang(artistAlbumPlayed)}`}`,
-                            dateInterval
-                        }} chartObject={artistAlbumPlayed === "selectedTimeInterval" ? expandArtistView[1].chart?.perAlbum as ChartConfiguration : artistAlbumPlayed === "month" ? expandArtistView[1].chart?.albumsPerMonth as ChartConfiguration : artistAlbumPlayed === "hour" ? expandArtistView[1].chart?.albumsPlayedPerHour as ChartConfiguration : expandArtistView[1].chart?.albumsPlayedPerYear as ChartConfiguration}></ChartViewer>
+                            dateInterval,
+                            alternativeTitles: buildTitle([{
+                                str: lang("Top")
+                            }, {
+                                str: topAlbumsOfArtistNumber.toString(),
+                                isTopNumber: true
+                            }, {
+                                str: `${lang("albums of")} ${expandArtistView[0]}`
+                            }, {
+                                str: `${artistAlbumPlayed === "selectedTimeInterval" ? "" : `, ${lang("divided by")} ${lang(artistAlbumPlayed)}`}`,
+                                isDivision: true
+                            }])
+                        }} chartObject={sliceDataset(artistAlbumPlayed === "selectedTimeInterval" ? expandArtistView[1].chart?.perAlbum as ChartConfiguration : artistAlbumPlayed === "month" ? expandArtistView[1].chart?.albumsPerMonth as ChartConfiguration : artistAlbumPlayed === "hour" ? expandArtistView[1].chart?.albumsPlayedPerHour as ChartConfiguration : expandArtistView[1].chart?.albumsPlayedPerYear as ChartConfiguration, topAlbumsOfArtistNumber, artistAlbumPlayed === "selectedTimeInterval")}></ChartViewer>
                     </Card>
                 </Card><br>
                 <Card>
-                    <h4>Most listened tracks:</h4>
+                    <h4>{lang("Most listened tracks")}:</h4>
                     {#if expandArtistView[1].songs.length > 2}
                         <Card secondCard={true}>
                             {@render PodiumWrapper([...expandArtistView[1].songs].sort((a, b) => b.playedMs - a.playedMs), `${lang("My top songs of")} ${expandArtistView[0]}`, "fetchalbum")}
@@ -915,7 +1012,7 @@
                     <div class="flex gap wrap wcenter statWrap" style="align-items: stretch">
                         {#each [...expandArtistView[1].songs].sort((a, b) => b.playedMs - a.playedMs) as song, i (song.songMetadata.trackId)}
                             {#if i < 5 || areTopTracksOfArtistExpanded}
-                                <button class="emptyButton">
+                                <button class="emptyButton" onclick={() => (singleTrackToShow = song)}>
                                     {@render StatCard(
                                         GetAlbumArt({db: databases.albumArtDb, id: GetAlbumArtId({albumAuthor: song.songMetadata.metadata.albumArtist, year: song.songMetadata.metadata.year, albumName: song.songMetadata.metadata.album})}),
                                         i,
@@ -935,7 +1032,9 @@
                     </div><br>
                     <Card secondCard={true}>
                         <h4 class="flex hcenter gap">
-                        {lang("Plays divided by album and organized")}
+                        {lang("Top")}
+                        <input type="number" min="1" max={expandArtistView[1].songs.length} bind:value={topTracksOfArtistNumber} style="width: 30px;">
+                        {lang("tracks, organized")}
                             <select style="width: fit-content;" bind:value={artistSongPlayed}>
                                 {#if expandArtistView[1].chart?.perSong}
                                     <option value="selectedTimeInterval">{lang("in the selected time interval")}</option>
@@ -955,9 +1054,19 @@
                             </select><br><br>
                         </h4>
                         <ChartViewer exportInfo={{
-                            title: `${lang("Top tracks of")} ${expandArtistView[0]}${artistSongPlayed === "selectedTimeInterval" ? "" : `, ${lang("divided by F")} ${lang(artistSongPlayed)}`}`,
-                            dateInterval
-                        }} chartObject={artistSongPlayed === "selectedTimeInterval" ? expandArtistView[1].chart?.perSong as ChartConfiguration : artistSongPlayed === "day of week" ? expandArtistView[1].chart?.perSongDayOfWeek as ChartConfiguration :  artistSongPlayed === "month" ? expandArtistView[1].chart?.songsPerMonth as ChartConfiguration : artistSongPlayed === "hour" ? expandArtistView[1].chart?.songsPlayedPerHour as ChartConfiguration : expandArtistView[1].chart?.songsPlayedPerYear as ChartConfiguration}></ChartViewer>
+                            dateInterval,
+                            alternativeTitles: buildTitle([{
+                                str: lang("Top")
+                            }, {
+                                str: topTracksOfArtistNumber.toString(),
+                                isTopNumber: true
+                            }, {
+                                str: `${lang("tracks of")} ${expandArtistView[0]}`
+                            }, {
+                                str: `${artistSongPlayed === "selectedTimeInterval" ? "" : `, ${lang("divided by F")} ${lang(artistSongPlayed)}`}`,
+                                isDivision: true
+                            }])
+                        }} chartObject={sliceDataset(artistSongPlayed === "selectedTimeInterval" ? expandArtistView[1].chart?.perSong as ChartConfiguration : artistSongPlayed === "day of week" ? expandArtistView[1].chart?.perSongDayOfWeek as ChartConfiguration :  artistSongPlayed === "month" ? expandArtistView[1].chart?.songsPerMonth as ChartConfiguration : artistSongPlayed === "hour" ? expandArtistView[1].chart?.songsPlayedPerHour as ChartConfiguration : expandArtistView[1].chart?.songsPlayedPerYear as ChartConfiguration, topTracksOfArtistNumber, artistSongPlayed === "selectedTimeInterval")}></ChartViewer>
                     </Card>
                 </Card><br>
                 <Card>
@@ -973,8 +1082,15 @@
                     </select>:</h4>
                     <Card secondCard={true}>
                         <ChartViewer exportInfo={{
-                            title: `${lang("Plays of")} ${expandArtistView[0]}, ${lang("divided by")} ${artistMsPlays === "week" ? lang("days of week") : lang(artistMsPlays)}`,
-                            dateInterval
+                            dateInterval,
+                            alternativeTitles: buildTitle([{
+                                str: lang("Plays of")
+                            }, {
+                                str: expandArtistView[0]
+                            }, {
+                                str: `, ${lang("divided by")} ${artistMsPlays === "week" ? lang("days of week") : lang(artistMsPlays)}`,
+                                isDivision: true
+                            }])
                         }} chartObject={artistMsPlays === "week" ? expandArtistView[1].chart?.perDayOfWeek as ChartConfiguration : artistMsPlays === "hour" ? expandArtistView[1].chart?.perHour as ChartConfiguration : artistMsPlays === "month" ? expandArtistView[1].chart?.perMonth as ChartConfiguration : expandArtistView[1].chart?.perYear as ChartConfiguration}></ChartViewer>
                     </Card>
                 </Card>
@@ -1018,7 +1134,10 @@
 
             </Card><br>
             <Card>
-                <h4 class="flex hcenter gap">{lang("Plays divided by song and organized")} <select style="width: fit-content; background-color: var(--secondcard)" bind:value={albumSongPlays}>
+                <h4 class="flex hcenter gap">{lang("Top")}
+                    <input type="number" bind:value={topTracksOfAlbumNumber} style="width: 30px; background-color: var(--secondcard)" min="1" max={expandAlbumView[0].songs.length}>
+                    {lang("tracks, organized")}
+                    <select style="width: fit-content; background-color: var(--secondcard)" bind:value={albumSongPlays}>
                 {#if expandAlbumView[0].chart?.perSong}
                     <option value="selectedTimeInterval">{lang("in the selected time interval")}</option>
                 {/if}
@@ -1034,9 +1153,22 @@
                 </select></h4>
                 <Card secondCard={true}>
                     <ChartViewer exportInfo={{
-                        title: `${lang("Top tracks of")} ${expandAlbumView[0].songs[0].songMetadata.metadata.album}${expandAlbumView[1] && expandArtistView ? ` (${lang("only tracks with")} ${expandArtistView[0]})` : ""}${albumSongPlays === "selectedTimeInterval" ? "" : `, ${lang("divided by F")} ${lang(albumSongPlays)}`}`,
-                        dateInterval
-                    }} chartObject={(albumSongPlays === "hour" ? expandAlbumView[0].chart?.songsPlayedPerHour : albumSongPlays === "month" ? expandAlbumView[0].chart?.songsPerMonth : albumSongPlays === "year" ? expandAlbumView[0].chart?.songsPlayedPerYear : expandAlbumView[0].chart?.perSong) as ChartConfiguration}></ChartViewer>
+                        dateInterval,
+                        alternativeTitles: buildTitle([{
+                            str: lang("Top")
+                        }, {
+                            str: topTracksOfAlbumNumber.toString(),
+                            isTopNumber: true
+                        }, {
+                            str: `${lang("tracks of")} ${expandAlbumView[0].songs[0].songMetadata.metadata.album}`,
+                        }, {
+                            str: `${expandAlbumView[1] && expandArtistView ? ` (${lang("only tracks with")} ${expandArtistView[0]})` : ""}`,
+                            isOnlyWith: true
+                        }, {
+                            str: `${albumSongPlays === "selectedTimeInterval" ? "" : `, ${lang("divided by F")} ${lang(albumSongPlays)}`}`,
+                            isDivision: true
+                        }])
+                    }} chartObject={sliceDataset((albumSongPlays === "hour" ? expandAlbumView[0].chart?.songsPlayedPerHour : albumSongPlays === "month" ? expandAlbumView[0].chart?.songsPerMonth : albumSongPlays === "year" ? expandAlbumView[0].chart?.songsPlayedPerYear : expandAlbumView[0].chart?.perSong) as ChartConfiguration, topTracksOfAlbumNumber, albumSongPlays === "selectedTimeInterval")}></ChartViewer>
                 </Card>
             </Card><br>
             <Card>
@@ -1059,8 +1191,16 @@
                 </select>:</h4>
                     <Card secondCard={true}>
                         <ChartViewer exportInfo={{
-                        title: `${lang("Plays of")} ${expandAlbumView[0].songs[0].songMetadata.metadata.album}${expandAlbumView[1] && expandArtistView ? ` (${lang("only tracks with")} ${expandArtistView[0]})` : ""}, ${lang("divided by")} ${albumMsPlays === "week" ? lang(`day of week`) : albumMsPlays === "monthyear" ? lang("month") : lang(albumMsPlays)} `,
-                        dateInterval
+                        dateInterval,
+                        alternativeTitles: buildTitle([{
+                            str: `${lang("Plays of")} ${expandAlbumView[0].songs[0].songMetadata.metadata.album}`
+                        }, {
+                            str: `${expandAlbumView[1] && expandArtistView ? ` (${lang("only tracks with")} ${expandArtistView[0]})` : ""}`,
+                            isOnlyWith: true
+                        }, {
+                            str: `, ${lang("divided by")} ${albumMsPlays === "week" ? lang(`day of week`) : albumMsPlays === "monthyear" ? lang("month") : lang(albumMsPlays)}`,
+                            isDivision: true
+                        }])
                     }} chartObject={(albumMsPlays === "week" ? expandAlbumView[0].chart?.perDayOfWeek : albumMsPlays === "hour" ? expandAlbumView[0].chart?.perHour : albumMsPlays === "month" ? expandAlbumView[0].chart?.perMonth : albumMsPlays === "monthyear" ? expandAlbumView[0].chart?.songsPerMonth : expandAlbumView[0].chart?.perYear) as ChartConfiguration}></ChartViewer>
                     </Card>
                 </Card>
