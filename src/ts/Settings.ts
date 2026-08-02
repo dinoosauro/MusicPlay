@@ -51,6 +51,12 @@ let obj = {
         scrollRecentlyPlayed: true,
         scrollOtherContent: false,
         maximumRecentlyPlayed: 10
+    },
+    lastFm: {
+        key: "",
+        username: "",
+        secret: "",
+        sessionKey: ""
     }
 }
 

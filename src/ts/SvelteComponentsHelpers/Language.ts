@@ -453,7 +453,14 @@ const availableTranslations = new Map<string, TranslationProps>([
     ["Your pinned tracks", {it: "Le tue tracce fissate"}],
     ["Your pinned albums", {it: "I tuoi album fissati"}],
     ["Your pinned artists", {it: "I tuoi artisti fissati"}],
-    ["Your pinned playlists", {it: "Le tue playlist fissate"}]
+    ["Your pinned playlists", {it: "Le tue playlist fissate"}],
+    ["Last.fm integration", {it: "Integrazione con last.fm"}],
+    ["You can connect MusicPlay to Last.fm so that all your listens will be tracked. You'll need to create a new", {it: "Puoi connettere MusicPlay a Last.fm in modo che tutti i tuoi ascolti saranno tracciati. Dovrai creare un nuovo"}],
+    ["API account on last.fm", {it: "account API su last.fm"}],
+    ["You can put whatever name you like, then just copy and paste the API key and secret here below", {it: "Puoi inserire qualsiasi nome tu voglia, poi copia ed incolla l'API key ed il secret qui in basso"}],
+    ["Connect", {it: "Connetti"}],
+    ["Last.fm account connected", {it: "Account last.fm connesso"}],
+    ["Disconnect", {it: "Disconnetti"}]
 ]);
 
 /**

@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OAuth Result</title>
+</head>
+<body>
+    <p>If the login has been successful, this webpage will automatically be closed.</p>
+    <script>
+        const params = new URLSearchParams(window.location.search.substring(1));
+        const token = params.get("token");
+        if (token) window.opener.postMessage({token}, window.location.origin); 
+    </script>
+</body>
+</html>

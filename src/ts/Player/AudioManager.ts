@@ -6,6 +6,7 @@ import GetAudioFile from "../DataFetcher/GetAudioFile";
 import type { EqualizerInfo, MetadataSource, MetadataSourceQueue, UpdateContentProps } from "./PlayerInterfaces";
 import IndexedDatabase from "../Database/IndexedDatabase";
 import Settings from "../Settings";
+import md5 from "blueimp-md5";
 
 
 interface PlayAudioProps {
@@ -74,8 +75,8 @@ async function updateStats(id: string, addMs: number, duration: number) {
  */
 function getEqualizer(info: EqualizerInfo) {
     const eq = audioContext.createBiquadFilter();
-    eq.type = info.type as BiquadFilterType; 
-    const {center, q} = getEqValues(info.from, info.to);
+    eq.type = info.type as BiquadFilterType;
+    const { center, q } = getEqValues(info.from, info.to);
     eq.frequency.value = center;
     eq.Q.value = q;
     eq.gain.value = info.db;
@@ -89,7 +90,7 @@ function getEqualizer(info: EqualizerInfo) {
 function getEqValues(min: number, max: number) {
     const center = Math.sqrt(min * max);
     const q = center / (max - min);
-    return {center, q}
+    return { center, q }
 }
 
 /**
@@ -117,6 +118,10 @@ const obj = {
      * Note also that stats about the currently-playing item should NOT be taken from this object, but from the audioInformation class (since they would be unreliable if hte Web Audio API is used.)
      */
     audio: null as HTMLAudioElement | null,
+    /**
+     * Time (in ms) when the user started the media playback
+     */
+    durationStart: null as null | number,
     /**
      * Information around the currently-playing audio instance
      */
@@ -206,12 +211,14 @@ const obj = {
             if (isFromUserInteraction || Settings.crossfade.seconds === 0) obj.audio.pause();
             URL.revokeObjectURL(obj.audio.src);
         }
+        updateLastFm(); // If track information is already available, we'll try connecting to last.fm so that we can scrobble the previously-played track
         /**
          * The time the user has started music playback, since the track was either:
          * - previously paused;
          * - finished.
          */
         let durationStart = Date.now();
+        obj.durationStart = durationStart;
         obj.currentMetadata = metadata;
         obj.previouslyPlayedTracks.push(metadata);
         /**
@@ -285,10 +292,10 @@ const obj = {
         if (isFromUserInteraction && obj.audioEffects.trackInfo !== null) { // User manually changed the track. So, no crossfade should be done. Let's clean up the currently-used AudioSourceNode (if it was created), since we'll need to regenerate it
             if (obj.audioEffects.trackInfo instanceof AudioBufferSourceNode) (obj.audioEffects.trackInfo as AudioBufferSourceNode)?.stop();
             (obj.audioEffects.trackInfo as AudioBufferSourceNode)?.disconnect();
-        } 
+        }
         obj.audioEffects.trackInfo = null;
         if (obj.audioEffects.connectInfo.gain || obj.audioEffects.equalizer.equalizerObjects.length !== 0 || (Settings.crossfade.seconds > 0 && !isFromUserInteraction) || obj.audioEffects.connectInfo.panner || isFromiPhone) { // Effects should be applied: let's use the Web Audio API for this file
-            obj.audioEffects.connectAudioProcessing({forceGain: Settings.crossfade.seconds > 0 && !isFromUserInteraction});
+            obj.audioEffects.connectAudioProcessing({ forceGain: Settings.crossfade.seconds > 0 && !isFromUserInteraction });
         }
         obj.audioInformation.duration = metadata.metadata.duration ?? 0;
         obj.audioInformation.currentTime = 0;
@@ -321,7 +328,7 @@ const obj = {
                             gainIntervalId = undefined;
                             return;
                         }
-                        if (Settings.crossfade.isExponential) {                            
+                        if (Settings.crossfade.isExponential) {
                             const elapsed = performance.now() - startTime;
                             const progress = Math.min(elapsed / durationMs, 1);
                             const easedProgress = 1 - Math.exp(Settings.crossfade.exponential * progress);
@@ -386,7 +393,7 @@ const obj = {
                  * The object with all the AudioEffects applied to the track to fade out.
                  * These effects are completely separated from the ones used by the next track, since otherwise we would have issues with the gain.
                  */
-                let info = obj.audioEffects.connectAudioProcessing({createNewElements: true, forceGain: true}); // This creates completely new effects
+                let info = obj.audioEffects.connectAudioProcessing({ createNewElements: true, forceGain: true }); // This creates completely new effects
                 let currentElement = obj.audioEffects.trackInfo;
                 if (!info) return;
                 obj.nextButton(false); // Start playback of new track
@@ -396,7 +403,7 @@ const obj = {
                 /**
                  * Stop the interval and clean up values
                  */
-                function stopInterval() { 
+                function stopInterval() {
                     if (!info) return;
                     info.gain.gain.value = 0;
                     clearInterval(interval);
@@ -487,7 +494,7 @@ const obj = {
                 fromPause = false;
                 initMediaPlayback(obj.audioInformation.currentTime);
             }
-            obj.updateContent({isPaused: false})
+            obj.updateContent({ isPaused: false })
         };
         if (prevAddedFunctionEvents.length !== 0) obj.audio.removeEventListener("play", prevAddedFunctionEvents.shift() as () => void);
         trackProcessId === currentProcessId && obj.audio.addEventListener("play", playFn);
@@ -506,7 +513,7 @@ const obj = {
             albumArt,
         });
         // This must run as the last thing, since it might trigger an Exception (the audio track might have not been started)
-        if (avoidPlayingAudio && isFromiPhone) { 
+        if (avoidPlayingAudio && isFromiPhone) {
             obj.audio.pause();
             pauseFn();
         }
@@ -519,11 +526,11 @@ const obj = {
          * Pipe the audio resource to the Audio Source Node (`obj.audioEffects.trackInfo`) and connect the effects
          * @returns 
          */
-        connectAudioProcessing({createNewElements, forceGain}: {
+        connectAudioProcessing({ createNewElements, forceGain }: {
             /**
              * If true, instead of applying the effects stored in the `obj.audioEffects` object, new ones will be created with the same value.
              */
-            createNewElements?: boolean, 
+            createNewElements?: boolean,
             /**
              * If true, the gain effect will always be added, even if it has been disabled by the user.
              */
@@ -566,11 +573,11 @@ const obj = {
             for (let i = 0; i < items.eq.length; i++) {
                 prevNode.connect(items.eq[i]);
                 prevNode = items.eq[i];
-            } 
+            }
             if (obj.audioEffects.connectInfo.gain || forceGain) {
                 prevNode.connect(items.gain);
                 prevNode = items.gain;
-            } 
+            }
             prevNode.connect(isFromiPhone ? obj.audioEffects.mediaStreamDestination as MediaStreamAudioDestinationNode : audioContext.destination);
             if (createNewElements) return items;
         },
@@ -730,15 +737,16 @@ const queueManager = {
     playAgain: async (isFromUserInteraction?: boolean) => {
         if (Settings.crossfade.seconds > 0) { // Since the crossfade transition must be done, we'll need to play the track just like if it were a new track.
             if (!obj.currentMetadata) return;
-            obj.playAudio({file: await GetAudioFile({ songDb, songId: obj.currentMetadata.trackId, metadataDb}), metadata: obj.currentMetadata, isFromUserInteraction, albumArt: await GetAlbumArt({
-                db: albumArtDb, 
-                id: GetAlbumArtId({
-                    albumAuthor: obj.currentMetadata.metadata.albumArtist,
-                    albumName: obj.currentMetadata.metadata.album,
-                    year: obj.currentMetadata.metadata.year
-                }), name: obj.currentMetadata.metadata.album
-            })
-        });
+            obj.playAudio({
+                file: await GetAudioFile({ songDb, songId: obj.currentMetadata.trackId, metadataDb }), metadata: obj.currentMetadata, isFromUserInteraction, albumArt: await GetAlbumArt({
+                    db: albumArtDb,
+                    id: GetAlbumArtId({
+                        albumAuthor: obj.currentMetadata.metadata.albumArtist,
+                        albumName: obj.currentMetadata.metadata.album,
+                        year: obj.currentMetadata.metadata.year
+                    }), name: obj.currentMetadata.metadata.album
+                })
+            });
         } else {
             obj.audioInformation.updateCurrentTime(0);
             obj.audio?.play();
@@ -757,13 +765,13 @@ const queueManager = {
          * The metadata of the audio file that will be played
          */
         let objToRead = obj.audioContext.certainNextQueue.length === 0 ? obj.audioContext.queue[queuePosition] : obj.audioContext.certainNextQueue.splice(0, 1)[0];
-        if (playPreviousTrack) { 
+        if (playPreviousTrack) {
             // We need to get the last two elements of the `certainNextQueue` object: the second-last element will be the one we play, while the last is the item that is being currently played and that will be skipped (and so we need to add it in the `certainNextQueue`, so that the user can play it again after the new track finishes)
-            const splicedItems = obj.previouslyPlayedTracks.splice(-2).map(i => {return {...i, queueId: crypto.randomUUID()}});
+            const splicedItems = obj.previouslyPlayedTracks.splice(-2).map(i => { return { ...i, queueId: crypto.randomUUID() } });
             objToRead = splicedItems[0];
             obj.audioContext.certainNextQueue.unshift(splicedItems[1]);
         }
-        const file = await GetAudioFile({ songDb, songId: objToRead.trackId, metadataDb});
+        const file = await GetAudioFile({ songDb, songId: objToRead.trackId, metadataDb });
         const albumArt = await GetAlbumArt({
             db: albumArtDb, id: GetAlbumArtId({
                 albumAuthor: objToRead.metadata.albumArtist,
@@ -821,5 +829,38 @@ navigator.mediaSession.setActionHandler("seekto", (e) => {
     if (obj.audio && typeof e.seekTime !== "undefined") obj.audioInformation.updateCurrentTime(e.seekTime);
 })
 
+/**
+ * Scrobble the current track on last.fm, if the user has set up last.fm integration
+ */
+function updateLastFm() {
+    if (Settings.lastFm.key && obj.currentMetadata && obj.durationStart) {
+        const params = [
+            ["method", "track.scrobble"],
+            ["artist[0]", obj.currentMetadata.metadata.artist],
+            ["track[0]", obj.currentMetadata.metadata.title || obj.currentMetadata.metadata.name.substring(0, obj.currentMetadata.metadata.name.lastIndexOf("."))],
+            ["album[0]", obj.currentMetadata.metadata.album],
+            ["timestamp[0]", Math.floor(obj.durationStart / 1000).toString()],
+            ["api_key", Settings.lastFm.key],
+            ["sk", Settings.lastFm.sessionKey],
+        ];
+        params.sort((a, b) => a[0].localeCompare(b[0])); // Must be alphabetically sorted for the api signature
+        const str = md5(`${params.map(i => `${i[0]}${i[1]}`).join("")}${Settings.lastFm.secret}`); 
+        const paramsConverted = new URLSearchParams(params);
+        paramsConverted.append("api_sig", str);
+        paramsConverted.append("format", "json");
+        try {
+            navigator.sendBeacon(`https://ws.audioscrobbler.com/2.0/`, paramsConverted); // Using the sendBeacon API permits to send the request even if the user closes the window
+        } catch(ex) {
+            console.warn(ex);
+        }
+    }
+}
+window.onbeforeunload = () => { 
+    if (obj.audio) {
+        updateLastFm(); // Update last.fm stats
+        obj.durationStart = Date.now(); // So that, if the user doesn't want to close the tab, the scrobble will have the correct length
+        return true; // Ask the user if they really want to close the tab
+    }
+}
 
 export default obj;

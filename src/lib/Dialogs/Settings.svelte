@@ -16,6 +16,7 @@
     import { slide } from "svelte/transition";
     import { cubicInOut } from "svelte/easing";
     import ShowSettingContent from "./ShowSettingContent.svelte";
+    import md5 from "blueimp-md5";
 
     // iOS cannot play multiple audio tracks at the same time. Therefore, we'll need to change the audio playback method by using the Web Audio API. We'll notify the user about that, and we'll also need to refresh the webpage when the crossfade is enabled/disabled
     const isIos = /(iPad|iPhone|iPod)/g.test(navigator.userAgent);
@@ -104,6 +105,19 @@
     function updateState(state: string) {
         openedContent = state;
     }
+
+    /**
+     * API key used for Last.fm integration
+     */
+    let lastFmKey = $state(Settings.lastFm.key);
+    /**
+     * Value of the input that asks for the last.fm API Key
+     */
+    let lastFmApiKey = "";
+    /**
+     * Value of the input that asks for the last.fm API secret
+     */
+    let lastFmSecret = "";
 </script>
 
 <Dialog closeFn={closeCallback}>
@@ -353,6 +367,47 @@
         </ShowSettingContent>
     </Card><br>
     {/if}
+    <Card secondCard={true}>
+        <ShowSettingContent title={lang("Last.fm integration")} suggestedState="lastFm" currentState={openedContent} {updateState}>
+            {#if lastFmKey === ""}
+            <p>{lang("You can connect MusicPlay to Last.fm so that all your listens will be tracked. You'll need to create a new")} <a href="https://www.last.fm/api/account/create" target="_blank">{lang("API account on last.fm")}</a>. {lang("You can put whatever name you like, then just copy and paste the API key and secret here below")}.</p>
+            <label class="flex hcenter gap">
+                API Key: <input type="text" bind:value={lastFmApiKey}>
+            </label><br>
+            <label class="flex hcenter gap">
+                API Secret: <input type="text" bind:value={lastFmSecret}>
+            </label><br>
+            <button class="btn" onclick={() => {
+                const win = window.open(`http://www.last.fm/api/auth/?api_key=${encodeURIComponent(lastFmApiKey)}&cb=${encodeURIComponent(`${window.location.href.substring(0, window.location.href.lastIndexOf("/"))}`)}/oauth.html`, "_blank", "width=400,height=400");
+                window.onmessage = async (msg) => {
+                    if (msg.origin !== window.location.origin) return;
+                    if (msg.data.token) {
+                        win?.close();
+                        const str = md5(`api_key${lastFmApiKey}methodauth.getSessiontoken${msg.data.token}${lastFmSecret}`);
+                        const req = await fetch(`https://ws.audioscrobbler.com/2.0/?api_sig=${encodeURIComponent(str)}&format=json&api_key=${encodeURIComponent(lastFmApiKey)}&method=${encodeURIComponent("auth.getSession")}&token=${encodeURIComponent(msg.data.token)}`);
+                        const res = await req.json();
+                        if (req.ok) {
+                            Settings.lastFm.sessionKey = res.session.key;
+                            Settings.lastFm.username = res.session.name;
+                            Settings.lastFm.secret = lastFmSecret;
+                            Settings.lastFm.key = lastFmApiKey;
+                            lastFmKey = lastFmApiKey;
+                        } else alert(`Token request failed: ${res.message} (${res.error})`);
+                    }
+                };
+            }}>{lang("Connect")}</button>
+            {:else}
+            <p>{lang("Last.fm account connected")}: <a href={`https://www.last.fm/user/${Settings.lastFm.username}`} target="_blank">{Settings.lastFm.username}</a></p>
+            <button class="btn" onclick={() => {
+                Settings.lastFm.key = "";
+                Settings.lastFm.username = "";
+                Settings.lastFm.secret = "";
+                Settings.lastFm.sessionKey = "";
+                lastFmKey = "";
+            }}>{lang("Disconnect")}</button>
+            {/if}
+        </ShowSettingContent>
+    </Card><br>
     <Card secondCard={true}>
         <ShowSettingContent title={lang("Metadata copy")} suggestedState="metadataCopy" currentState={openedContent} {updateState}>            
             <p>{lang("The following settings will be applied when an audio file is exported and the user asks to copy the metadata to the output file")}.</p>

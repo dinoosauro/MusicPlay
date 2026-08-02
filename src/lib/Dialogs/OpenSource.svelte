@@ -15,6 +15,7 @@
             <option value="LGPL2.1">TagLib-Sharp</option>
             <option value="2023, Gildas Lormeau">zip.js</option>
             <option value="2019 Jerome Wu">ffmpeg.wasm</option>
+            <option value="2011 Sebastian Tschan, https://blueimp.net">blueimp-md5</option>
             <option value="LGPL2.1">FFmpeg</option>
             <option value="GPL3">MusicPlay</option>
         </select><br><br>
