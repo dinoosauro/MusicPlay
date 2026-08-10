@@ -117,14 +117,12 @@ const obj = {
             let req = objectStore.delete(query);
             req.onsuccess = async () => {
                 if (!skipDrive && (Settings.cloudStorage.googleDrive.enabled || Settings.cloudStorage.onedrive.enabled)) {
-                    try {
-                        await CloudStorage.deleteFromCloud({subfolder: request, id: query, db: Settings.cloudStorage.onedrive.enabled ? onedriveDb : gDriveDb})
-                    } catch(ex) { // Failed cloud delete. Let's save the current request info so that we can delete it later.
+                    CloudStorage.deleteFromCloud({subfolder: request, id: query, db: Settings.cloudStorage.onedrive.enabled ? onedriveDb : gDriveDb}).catch((ex) => { // Failed cloud delete. Let's save the current request info so that we can delete it later.
                         const failedIds = new Set(JSON.parse(localStorage.getItem("MusicPlayer-FailedDelete") ?? "[]")) as Set<string>;
                         failedIds.add(`${request}____${query}`);
                         localStorage.setItem("MusicPlayer-FailedDelete", JSON.stringify(Array.from(failedIds)));
                         console.warn(ex);
-                    }
+                    })
                 }
                 resolve();
             }

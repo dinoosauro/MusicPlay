@@ -150,7 +150,7 @@
     <Card secondCard={true}>
         <ShowSettingContent title={lang("Cloud sync")} suggestedState="backup" currentState={openedContent} {updateState}>
             {#if isGoogleDriveIntegrationBeingUsed}
-            <p>{lang(`Syncing with ${Settings.cloudStorage.onedrive.enabled ? "OneDrive" : "Google Drive"}`)}. ${lang("If you want to change account or provider, you need to disable syncing")}.</p>
+            <p>{lang(`Syncing with ${Settings.cloudStorage.onedrive.enabled ? "OneDrive" : "Google Drive"}`)}. {lang("If you want to change account or provider, you need to disable syncing")}.</p>
             <button class="btn" onclick={() => {
                 // Google Drive values
                 Settings.cloudStorage.googleDrive.enabled = false;
