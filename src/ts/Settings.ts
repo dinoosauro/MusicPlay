@@ -57,6 +57,27 @@ let obj = {
         username: "",
         secret: "",
         sessionKey: ""
+    },
+    cloudStorage: {
+        googleDrive: {
+            enabled: false,
+            lastSync: 0,
+            allUploaded: false,
+            customOpts: {
+                clientId: "",
+                clientSecret: "",
+                refreshToken: "",
+                useRefreshToken: false
+            }
+        },
+        onedrive: {
+            enabled: false,
+            refreshToken: "",
+            folderId: "",
+            folders: {} as {[key: string]: string},
+            lastSync: 0,
+            allUploaded: false
+        }
     }
 }
 

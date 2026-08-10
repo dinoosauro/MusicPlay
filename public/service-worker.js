@@ -36,7 +36,11 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => self.clients.claim());
 self.addEventListener('fetch', event => {
     const req = event.request;
-    if (req.url.indexOf("updatecode") !== -1 || req.url.startsWith("blob") || (req.method !== "GET" && req.method !== "HEAD")) event.respondWith(fetch(req)); else event.respondWith(networkFirst(req));
+    if (req.url.indexOf("updatecode") !== -1 || req.url.startsWith("blob") || req.url.indexOf("googleapis.com/") !== -1 || req.url.indexOf("graph.microsoft.com") !== -1 || req.url.indexOf("-my.sharepoint.com") !== -1 || req.url.indexOf("microsoftpersonalcontent.com") !== -1 || (req.method !== "GET" && req.method !== "HEAD")) {
+        return; // The webpage will handle the fetch request normally. Fixes issues with WebKit.
+    } else {
+        event.respondWith(networkFirst(req));
+    }
 });
 async function networkFirst(req) {
     try {

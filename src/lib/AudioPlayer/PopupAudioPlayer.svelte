@@ -23,6 +23,7 @@
     import OpenPictureInPictureMode from "../../ts/SvelteComponentsHelpers/OpenPictureInPictureMode";
     import LrcLibIntegration from "../../ts/DataFetcher/LrcLibIntegration";
     import IndexedDatabase from "../../ts/Database/IndexedDatabase";
+    import ShowAlert from "../../ts/SvelteComponentsHelpers/ShowAlert";
     /**
      * The image that displays the currently-playing album art
      */
@@ -93,7 +94,7 @@
         // Let's tell the user they can go in fullscreen mode by clicking the image
         if (isAudioBeingPlayed && localStorage.getItem("MusicPlayer-GoToMainPlayerTipSeen") !== "a") {
             setTimeout(() => {
-                alert(lang("Tip: click on the album art of the floating music player to open the main audio player."));
+                ShowAlert(lang("Tip: click on the album art of the floating music player to open the main audio player."));
                 localStorage.setItem("MusicPlayer-GoToMainPlayerTipSeen", "a");
             }, 1000)
         }
@@ -173,7 +174,7 @@
             PiPModeImgResize();
             if (localStorage.getItem("MusicPlayer-GoToLyricsPiPSeen") !== "a") {
                 setTimeout(() => {
-                    window.documentPictureInPicture?.window?.alert(lang("Tip: click on the album art of the Picture-in-Picture player to view the lyrics."));
+                    ShowAlert(lang("Tip: click on the album art of the Picture-in-Picture player to view the lyrics."), window.documentPictureInPicture?.window?.document.body);
                     localStorage.setItem("MusicPlayer-GoToLyricsPiPSeen", "a");
                 }, 1000)
             }

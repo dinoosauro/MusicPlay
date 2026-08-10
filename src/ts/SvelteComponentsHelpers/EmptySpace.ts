@@ -12,7 +12,7 @@ let divsToUpdate: HTMLElement[] = [];
  * The resize observer that'll resize all the empty divs so that they have the same height of the floating player
  */
 const resizeObserver = new ResizeObserver(() => {
-    for (const item of divsToUpdate) item.style.height = `${(floatingPlayerDiv?.getBoundingClientRect().height ?? -75) + 75}px`;
+    for (const item of divsToUpdate) item.style.height = `${((floatingPlayerDiv?.parentElement ?? floatingPlayerDiv)?.clientHeight ?? -10) + 20}px`;
 })
 
 /**
@@ -23,7 +23,7 @@ const resizeObserver = new ResizeObserver(() => {
  */
 export function registerEmptySpace(div: HTMLElement) {
     divsToUpdate.push(div);
-    div.style.height = `${(floatingPlayerDiv?.getBoundingClientRect().height ?? -75) + 75}px`;
+    div.style.height = `${((floatingPlayerDiv?.parentElement ?? floatingPlayerDiv)?.clientHeight ?? -10) + 10}px`;
     return {
         destroy() {
             const index = divsToUpdate.indexOf(div);

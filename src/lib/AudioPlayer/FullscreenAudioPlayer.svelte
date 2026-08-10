@@ -23,6 +23,7 @@
     import ChangePlaybackRate from "./ChangePlaybackRate.svelte";
     import ChangeVolume from "./ChangeVolume.svelte";
     import inputRangeStyle from "../../ts/SvelteComponentsHelpers/InputTypeRangeStyle";
+    import ShowAlert from "../../ts/SvelteComponentsHelpers/ShowAlert";
 
     const { albumArt, imageTransitionCallback, skipHistoryUrlForFullscreenView, albumArtDb, metadataDb }: { 
         /**
@@ -294,7 +295,7 @@
         // Let's tell the user they can go in fullscreen mode by clicking the image
         if (localStorage.getItem("MusicPlayer-FullscreenTipSeen") !== "a") {
             setTimeout(() => {
-                alert(lang("Last tip: click on the album art to make the webpage fullscreen. Do the same to exit."));
+                ShowAlert(lang("Last tip: click on the album art to make the webpage fullscreen. Do the same to exit."));
                 localStorage.setItem("MusicPlayer-FullscreenTipSeen", "a");
             }, 1000);
         }

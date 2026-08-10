@@ -17,6 +17,8 @@
     import { cubicInOut } from "svelte/easing";
     import ShowSettingContent from "./ShowSettingContent.svelte";
     import md5 from "blueimp-md5";
+    import CloudStorage from "../../ts/Database/CloudStorage";
+    import ShowAlert from "../../ts/SvelteComponentsHelpers/ShowAlert";
 
     // iOS cannot play multiple audio tracks at the same time. Therefore, we'll need to change the audio playback method by using the Web Audio API. We'll notify the user about that, and we'll also need to refresh the webpage when the crossfade is enabled/disabled
     const isIos = /(iPad|iPhone|iPod)/g.test(navigator.userAgent);
@@ -97,7 +99,7 @@
     /**
      * ID of the Settings tab that has been opened
      */
-    let openedContent = $state("lyrics");
+    let openedContent = $state("backup");
     /**
      * Function called to update the State
      * @param state the ID of the settings tab to open
@@ -118,6 +120,15 @@
      * Value of the input that asks for the last.fm API secret
      */
     let lastFmSecret = "";
+
+    /**
+     * If a connection to a cloud storage provider has been enabled
+     */
+    let isGoogleDriveIntegrationBeingUsed = $state(Settings.cloudStorage.googleDrive.enabled || Settings.cloudStorage.onedrive.enabled);
+    /**
+     * The selected cloud storage provider from the menu picker
+     */
+    let selectedCloudProvider = $state("onedrive");
 </script>
 
 <Dialog closeFn={closeCallback}>
@@ -136,6 +147,82 @@
 </button>
 </div>
     <h3>{lang("Settings")}:</h3>
+    <Card secondCard={true}>
+        <ShowSettingContent title={lang("Cloud sync")} suggestedState="backup" currentState={openedContent} {updateState}>
+            {#if isGoogleDriveIntegrationBeingUsed}
+            <p>{lang(`Syncing with ${Settings.cloudStorage.onedrive.enabled ? "OneDrive" : "Google Drive"}`)}. ${lang("If you want to change account or provider, you need to disable syncing")}.</p>
+            <button class="btn" onclick={() => {
+                // Google Drive values
+                Settings.cloudStorage.googleDrive.enabled = false;
+                Settings.cloudStorage.googleDrive.allUploaded = false;
+                Settings.cloudStorage.googleDrive.customOpts.refreshToken = "";
+                Settings.cloudStorage.googleDrive.lastSync = 0;
+                // OneDrive values
+                Settings.cloudStorage.onedrive.enabled = false;
+                Settings.cloudStorage.onedrive.allUploaded = false;
+                Settings.cloudStorage.onedrive.folderId = "";
+                Settings.cloudStorage.onedrive.folders = {};
+                Settings.cloudStorage.onedrive.lastSync = 0;
+                Settings.cloudStorage.onedrive.refreshToken = "";
+                // Other values
+                CloudStorage.token = null;
+                CloudStorage.hasDriveSyncBeenDone = false;
+                isGoogleDriveIntegrationBeingUsed = false;
+            }}>{lang("Disable sync")}</button>
+            {:else}
+            <label class="flex hcenter gap">
+                {lang("Backup with")} <select bind:value={selectedCloudProvider}>
+                    <option value="onedrive">OneDrive</option>
+                    <option value="gdrive">Google Drive</option>
+                </select>
+            </label>
+            {#if selectedCloudProvider === "onedrive"}
+            <p>{lang("You can back up your library on OneDrive. Just log in with your Microsoft account, and we'll take care of the rest")}.</p>
+            <button class="btn" onclick={() => CloudStorage.startDriveIntegration(databases as DatabaseContainer, true)}>{lang("Set up")}</button>
+            {:else}
+            <p>{lang("You can back up your library on Google Drive")}.</p>
+            <Card>
+                <u>{lang("Easy method")}:</u><br>
+                <p>{lang("You just need to press the button below. Due to Google's limitations, you'll need to authorize the access to your Google Drive every hour")}.</p>
+                <button class="btn" style="background-color: var(--secondcard);" onclick={() => {
+                    Settings.cloudStorage.googleDrive.customOpts.useRefreshToken = false;
+                    CloudStorage.startDriveIntegration(databases as DatabaseContainer);
+                }}>{lang("Set up")}</button>
+            </Card><br>
+            <Card>
+                <ShowSettingContent title={lang("Advanced method (doesn't require authorization every hour)")} suggestedState="advancedGDriveBackup" currentState={openedContent} {updateState} isEmbedded={true}>
+                    <p>{lang("If you want an automatic connection with Google Drive (so that you won't need to authenticate every hour), follow these steps")}:</p>
+                    <ul>
+                        <li><a href="https://console.cloud.google.com/projectcreate" target="_blank">{lang("Click on this link")}</a>, {lang(`then click on the "Create" button`)}.</li>
+                        <li>{lang(`You'll see a scary webpage. In the top-right corner, you should see a rectangle with the notifications. Click on the "Select project" button of the first notification`)}.</li>
+                        <li>{lang(`In the middle of the page, you should now see a square titled "API". Click on the "Go to API Overview" button`)}.</li>
+                        <li>{lang(`Go on the "API library" tab, search "Drive" in the textbox in the middle of the screen, click on the "Google Drive API" result and then click on "Enable"`)}</li>
+                        <li>{lang(`Now, go on the "Credentials" page (you can access it from the left menu, or by clicking on the three lines in the top-left corner if you're on mobile). Click on "Create credentials" and pick "OAuth Client ID"`)}</li>
+                        <li>{lang(`You'll be asked to set up the consent screen. Click on that button, then on the "Get started" button, and fill the required information. Don't worry, you'll be the only one that'll use the API, so you can put whatever you want`)}.</li>
+                        <li>{lang(`Let's now go to the "Clients" page you can find in the left menu (just like before, you can access it by clicking the three lines in the top-left corner if you're on mobile). Click "Create client", choose "OAuth Client ID" and "Web application". In the "Authorized JavaScript origins", put`)} <code>{window.location.origin}</code>, {lang(`and in the "Authorized redirect URLs" put`)} <code>{window.location.href.substring(0, window.location.href.lastIndexOf("/"))}/oauth.html</code></li>
+                        <li>{lang(`Now, click on the "Create" button, and copy the Client ID and the Client Secret below`)}.</li>
+                        <li>{lang(`Last step: go on the "Audience" page (always on the left menu), and add the email address of your Google account in the "Test users" section`)}.</li>
+                    </ul>
+                    <p>{lang("To go back to the easy mode, leave these two fields blank")}.</p>
+                    <label class="flex hcenter gap">
+                        Client ID:
+                        <input style="background-color: var(--secondcard);" bind:value={Settings.cloudStorage.googleDrive.customOpts.clientId}>
+                    </label><br>
+                    <label class="flex hcenter gap">
+                        Client secret:
+                        <input style="background-color: var(--secondcard);" bind:value={Settings.cloudStorage.googleDrive.customOpts.clientSecret}>
+                    </label><br>
+                    <button class="btn" style="background-color: var(--secondcard);" onclick={() => {
+                        Settings.cloudStorage.googleDrive.customOpts.refreshToken = "";
+                        Settings.cloudStorage.googleDrive.customOpts.useRefreshToken = true;
+                        CloudStorage.startDriveIntegration(databases as DatabaseContainer);
+                    }}>{lang("Connect to Google Drive")}</button>
+                </ShowSettingContent>
+            </Card>
+            {/if}
+            {/if}
+        </ShowSettingContent>
+    </Card><br>
     <Card secondCard={true}>
         <ShowSettingContent title={lang("Lyrics integration")} suggestedState="lyrics" currentState={openedContent} {updateState}>
             <p>{lang("The application can automatically fetch missing lyrics from")} <a href="https://lrclib.net" target="_blank">LRCLib</a>. {lang("The application will only share the necessary metadata to identify the currently-playing song. If you enable this, you're also subject to LRCLib's Terms of Service")}.</p>
@@ -392,7 +479,7 @@
                             Settings.lastFm.secret = lastFmSecret;
                             Settings.lastFm.key = lastFmApiKey;
                             lastFmKey = lastFmApiKey;
-                        } else alert(`Token request failed: ${res.message} (${res.error})`);
+                        } else ShowAlert(`Token request failed: ${res.message} (${res.error})`);
                     }
                 };
             }}>{lang("Connect")}</button>

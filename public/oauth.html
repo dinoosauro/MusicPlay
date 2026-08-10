@@ -10,7 +10,21 @@
     <script>
         const params = new URLSearchParams(window.location.search.substring(1));
         const token = params.get("token");
-        if (token) window.opener.postMessage({token}, window.location.origin); 
+        if (token) {
+            window.opener.postMessage({token}, window.location.origin); 
+            window.close();
+        }
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const [iss, gtoken] = [hashParams.get("iss"), hashParams.get("access_token")];
+        if (iss && gtoken) {
+            window.opener.postMessage({gtoken}, window.location.origin);
+            window.close();
+        }
+        const code = params.get("code");
+        if (code) {
+            window.opener.postMessage({code}, window.location.origin);
+            window.close();
+        }
     </script>
 </body>
 </html>

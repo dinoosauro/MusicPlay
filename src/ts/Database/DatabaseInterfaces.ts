@@ -65,6 +65,10 @@ export interface metadataDB {
     hasBothDirectoryIdAndFileHandle?: boolean
 }
 
+export interface GDriveIdContainer {
+    lastEditId: string,
+    driveId: string
+}
 export interface DatabaseContainer {
     songDb: IDBDatabase
     albumArtDb: IDBDatabase
@@ -73,5 +77,7 @@ export interface DatabaseContainer {
     directoryHandleDb: IDBDatabase,
     playlistDb: IDBDatabase,
     playlistImgDb: IDBDatabase,
-    songStatsDb: IDBDatabase
+    songStatsDb: IDBDatabase,
+    googleDriveContainer: IDBDatabase,
+    onedriveContainer: IDBDatabase
 }

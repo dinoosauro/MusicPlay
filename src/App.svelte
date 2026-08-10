@@ -8,7 +8,7 @@
   import GetAlbumArt from "./ts/DataFetcher/GetAlbumArt";
   import IndexedDatabase from "./ts/Database/IndexedDatabase";
   import LoadMetadata from "./ts/DataFetcher/LoadMetadata";
-  import {UploadSongs} from "./ts/Database/UploadSongs";
+  import {UploadSongs, UploadSongsFromFileArray} from "./ts/Database/UploadSongs";
   import type { InfoProps, MetadataSource, PlaylistContainer, PossibleSortingOptions } from "./ts/Player/PlayerInterfaces";
   import AlbumViewer from "./lib/AlbumViewer.svelte";
   import AnimationHandler from "./ts/Animations/ImageAnimationHandler";
@@ -49,6 +49,9 @@
     import Stats from "./lib/PlayerTabs/Stats.svelte";
     import Home from "./lib/PlayerTabs/Home.svelte";
     import SettingsObject from "./ts/Settings"
+    import CloudStorage from "./ts/Database/CloudStorage";
+    import DriveLogin from "./lib/Dialogs/DriveLogin.svelte";
+    import ShowAlert from "./ts/SvelteComponentsHelpers/ShowAlert";
   let haveSongsBeenAdded = $state(
     localStorage.getItem("MusicPlayer-ItemsAdded") === "1",
   );
@@ -126,6 +129,15 @@
    */
   let convertDialog = $state<MetadataSource[] | false>(false);
   /**
+   * If not undefined, the property that contains the information used to show the "Syncing with Google Drive / OneDrive" dialog
+   * It's an array, composed of [if it should inform the user that a sync operation is ongoing (if false, it'll ask to authenticate again), the URL of the webpage that should be opened]
+   */
+  let gDriveSyncDialog = $state<[boolean, string | undefined] | undefined>();
+  CloudStorage.uploadInfoCallback.push((v) => { // Show the dialog 
+    gDriveSyncDialog = v ? [v, undefined] : undefined;
+    if (!v && databases) LoadMetadata(databases, getSortingType(new URLSearchParams(window.location.hash.substring(1)).get("pageShown") || pageShown)).then((metadata) => (loadedMetadata = metadata)); // Successful sync. Let's reload all the metadata
+  });
+  /**
    * Function called when the user has selected/unselected a song track
    */
   function selectCallback() {
@@ -156,11 +168,23 @@
       directoryHandleDb: await IndexedDatabase.db("folderHandle"),
       playlistDb: await IndexedDatabase.db("playlist"),
       playlistImgDb: await IndexedDatabase.db("playlistImg"),
-      songStatsDb: await IndexedDatabase.db("songStats")
+      songStatsDb: await IndexedDatabase.db("songStats"),
+      googleDriveContainer: await IndexedDatabase.db("gdrive"),
+      onedriveContainer: await IndexedDatabase.db("onedrive")
     };
+    document.addEventListener("drop", (e) => {
+      e.preventDefault();
+      if (databases) UploadSongsFromFileArray({database: databases, files: Array.from(e.dataTransfer?.items ?? []).filter(i => i.kind === "file").map(i => i.getAsFile()).filter(i => !!i), metadataToUpdate: loadedMetadata ? {                    
+        type: sortingType,
+        data: loadedMetadata
+      } : undefined})
+    });
+    document.addEventListener("dragover", (e) => e.preventDefault());
     const params = new URLSearchParams(window.location.hash.substring(1));
     const id = params.get("pageShown");
     loadedMetadata = await LoadMetadata(databases, getSortingType(id || pageShown));
+    CloudStorage.showDriveLoginRequest = (link) => (gDriveSyncDialog = [false, link]); // Event to show the dialog that asks the user to login again
+    if (SettingsObject.cloudStorage.googleDrive.enabled || SettingsObject.cloudStorage.onedrive.enabled) CloudStorage.startDriveIntegration(databases);
     navigator.storage && navigator.storage.persist && navigator.storage.persist().then((res) => console.log("Persistent storage enabled:", res));
     if (id === "albumView" || id === "trackView" || id === "artistsView" || id === "albumArtistsView" || id === "playlistsView" || id === "statsView" || id === "homeView") pageShown = id;
     haveSongsBeenAdded = true; // Since, if there are no entries, the length of loadedMetadata will be 0
@@ -662,7 +686,7 @@
                         successful = true;
                       }
                     }
-                    alert(lang("Playlists successfully imported"))
+                    ShowAlert(lang("Playlists successfully imported"))
                   }
                 });
                 input.click();
@@ -845,6 +869,9 @@
             }}
           ></AlbumViewer>
         {/if}
+      {/if}
+      {#if typeof gDriveSyncDialog !== "undefined"}
+        <DriveLogin isFetching={gDriveSyncDialog[0]} {databases} link={gDriveSyncDialog[1]} callback={() => (gDriveSyncDialog = undefined)}></DriveLogin>
       {/if}
     {/if}
   </main>

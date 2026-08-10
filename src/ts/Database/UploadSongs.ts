@@ -33,7 +33,7 @@ declare global {
         documentPictureInPicture?: {
             requestWindow: (options: any) => Promise<Window>,
             window?: Window
-        }
+        },
     }
     interface FileSystemHandle {
         requestPermission: ({ mode }: { mode: "read" | "write" | "readwrite" }) => Promise<string>
@@ -112,6 +112,37 @@ interface UploadSongsProps {
     metadataToUpdate?: MetadataAddProps
 }
 
+interface UpdateSongArrayProps {
+    files: File[] | FileList;
+    database: DatabaseContainer,
+    metadataToUpdate: MetadataAddProps | undefined;
+}
+
+/**
+ * Add new songs to the music library.
+ */
+export async function UploadSongsFromFileArray({files, database, metadataToUpdate}: UpdateSongArrayProps) {
+    /**
+    * An object that has as a key the file name (without the extension), and as a value all the files with the same path.
+    * This is used so that we can find the .lrc/.ttml files tied to the audio file.
+    */
+    let fileList: { [key: string]: File[] } = {};
+    for (const file of files) {
+        const name = file.name.substring(0, file.name.lastIndexOf("."));
+        if (typeof fileList[name] === "undefined") fileList[name] = [];
+        fileList[name].push(file);
+    }
+    for (const fileName in fileList) {
+        for (const file of fileList[fileName]) {
+            if (file.type.startsWith("audio")) await SaveSongFileInDatabase(database, {
+                file: file,
+                fileName: file.webkitRelativePath || file.name,
+                lyricsFile: fileList[fileName].find(i => i.name.endsWith("lrc") || i.name.endsWith("txt") || i.name.endsWith("ttml") || i.name.endsWith("xml"))
+            }, metadataToUpdate);
+        }
+    }
+}
+
 /**
  * Ask the user to pick some files, and save them as songs
  */
@@ -126,25 +157,7 @@ export async function UploadSongs({ database, pickFolder, metadataToUpdate }: Up
             onchange: async () => {
                 input.remove();
                 if (input.files) {
-                    /**
-                     * An object that has as a key the file name (without the extension), and as a value all the files with the same path.
-                     * This is used so that we can find the .lrc/.ttml files tied to the audio file.
-                     */
-                    let fileList: { [key: string]: File[] } = {};
-                    for (const file of input.files) {
-                        const name = file.name.substring(0, file.name.lastIndexOf("."));
-                        if (typeof fileList[name] === "undefined") fileList[name] = [];
-                        fileList[name].push(file);
-                    }
-                    for (const fileName in fileList) {
-                        for (const file of fileList[fileName]) {
-                            if (file.type.startsWith("audio")) await SaveSongFileInDatabase(database, {
-                                file: file,
-                                fileName: file.webkitRelativePath || file.name,
-                                lyricsFile: fileList[fileName].find(i => i.name.endsWith("lrc") || i.name.endsWith("txt") || i.name.endsWith("ttml") || i.name.endsWith("xml"))
-                            }, metadataToUpdate);
-                        }
-                    }
+                    await UploadSongsFromFileArray({files: input.files, database, metadataToUpdate});
                 }
             }
         });
@@ -286,16 +299,13 @@ async function updateMetadata({ metadata, id, metadataDb, albumArtDb, fileName, 
             data: metadataObj
         }
     });
-    if ((metadata.common.picture?.length ?? 0) !== 0) {
+    const albumArtId = GetAlbumArtId({albumAuthor: albumArtist,year: metadata.common.year,albumName: album});
+    if ((metadata.common.picture?.length ?? 0) !== 0 && !(await IndexedDatabase.get({db: albumArtDb, request: "albumArt",query: albumArtId }))) {
         await IndexedDatabase.set({
             db: albumArtDb,
             request: "albumArt",
             object: {
-                id: GetAlbumArtId({
-                    albumAuthor: albumArtist,
-                    year: metadata.common.year,
-                    albumName: album
-                }),
+                id: albumArtId,
                 data: {
                     // @ts-ignore
                     img: new Blob([(metadata.common.picture as IPicture[])[0].data])

@@ -1,5 +1,6 @@
 import { addHomePageContent } from "../DataFetcher/HomePageContent";
 import type { RecentlyPlayed } from "../Player/PlayerInterfaces";
+import ShowAlert from "./ShowAlert";
 
 interface Props extends RecentlyPlayed {
     /**
@@ -21,7 +22,7 @@ export default function AddLongPressEventForHomepage(node: HTMLElement, info: Pr
         timeout = setTimeout(() => {
             if (Math.abs(startScroll - window.scrollY) > 20 || (info.checkIfIsBeingMoved && info.checkIfIsBeingMoved())) return; // Check that the user isn't just moving the page (especially important on mobile devices)
             const result = addHomePageContent(info);
-            alert(`${result ? "Added to" : "Removed from"} home page.`);
+            ShowAlert(`${result ? "Added to" : "Removed from"} home page.`);
             info.callback && info.callback(result);
         }, 600)
     }
