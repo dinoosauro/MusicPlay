@@ -280,21 +280,28 @@ async function syncWithOneDrive(databases: DatabaseContainer) {
     if (!folders.ok) return;
     const foldersJson = await folders.json();
     for (const folder of foldersJson.value) {
-        const fileReq = await intelliFetch(`https://graph.microsoft.com/v1.0/me/drive/items/${folder.id}/children?$orderby=lastModifiedDateTime desc`, {
-            headers: {
-                Authorization: `Bearer ${obj.token}`
-            }
-        });
-        if (!fileReq.ok) return;
-        const fileRes = await fileReq.json();
-        for (const file of fileRes.value) {
-            if (new Date(file.lastModifiedDateTime).valueOf() < Settings.cloudStorage.onedrive.lastSync) break;
-            const content = await IndexedDatabase.get({ db: databases.onedriveContainer, request: "onedrive", query: `${folder.name}____${folder.name === "contentData" ? file.name.substring(1, file.name.indexOf("]")) : file.name}` });
-            if ((content?.data as GDriveIdContainer)?.lastEditId === (file.cTag)) continue; // The last version of the file is already stored on the device
-            const download = await fetch(file["@microsoft.graph.downloadUrl"]);
-            if (download.ok) {
-                await updateIndexedDatabase({ fileType: folder.name, name: file.name, databases, fileId: folder.name === "contentData" ? file.name.substring(1, file.name.indexOf("]")) : undefined, req: download });
-                await IndexedDatabase.set({ db: databases.onedriveContainer, request: "onedrive", skipDrive: true, object: { id: folder.name === "contentData" ? `contentData____${file.name.substring(1, file.name.indexOf("]"))}` : `${folder.name}____${file.name}`, data: { lastEditId: file.cTag, driveId: file.id } } });
+        let nextLink: string | undefined = `https://graph.microsoft.com/v1.0/me/drive/items/${folder.id}/children?$orderby=lastModifiedDateTime desc`;
+        while (nextLink) {
+            const fileReq = await intelliFetch(nextLink, {
+                headers: {
+                    Authorization: `Bearer ${obj.token}`
+                }
+            });
+            if (!fileReq.ok) return;
+            const fileRes = await fileReq.json();
+            nextLink = fileRes["@odata.nextLink"];
+            for (const file of fileRes.value) {
+                if (new Date(file.lastModifiedDateTime).valueOf() < Settings.cloudStorage.onedrive.lastSync) {
+                    nextLink = undefined;
+                    break;
+                }
+                const content = await IndexedDatabase.get({ db: databases.onedriveContainer, request: "onedrive", query: `${folder.name}____${folder.name === "contentData" ? file.name.substring(1, file.name.indexOf("]")) : file.name}` });
+                if ((content?.data as GDriveIdContainer)?.lastEditId === (file.cTag)) continue; // The last version of the file is already stored on the device
+                const download = await fetch(file["@microsoft.graph.downloadUrl"]);
+                if (download.ok) {
+                    await updateIndexedDatabase({ fileType: folder.name, name: file.name, databases, fileId: folder.name === "contentData" ? file.name.substring(1, file.name.indexOf("]")) : undefined, req: download });
+                    await IndexedDatabase.set({ db: databases.onedriveContainer, request: "onedrive", skipDrive: true, object: { id: folder.name === "contentData" ? `contentData____${file.name.substring(1, file.name.indexOf("]"))}` : `${folder.name}____${file.name}`, data: { lastEditId: file.cTag, driveId: file.id } } });
+                }
             }
         }
     }
@@ -395,7 +402,10 @@ async function syncWithGoogleDrive(databases: DatabaseContainer) {
         if (pageToken) params.set("pageToken", pageToken);
         for (const file of res.files) {
             try {
-                if (new Date(file.modifiedTime).valueOf() < Settings.cloudStorage.googleDrive.lastSync) break;
+                if (new Date(file.modifiedTime).valueOf() < Settings.cloudStorage.googleDrive.lastSync) {
+                    pageToken = false;
+                    break;
+                }
                 const content = await IndexedDatabase.get({ db: databases.googleDriveContainer, request: "gdrive", query: file.name.startsWith("contentData") ? `contentData____${file.appProperties.fileId}` : file.name });
                 if ((content?.data as GDriveIdContainer)?.lastEditId === file.appProperties.operationId) continue;
             } catch (ex) {
