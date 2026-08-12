@@ -14,13 +14,15 @@
     import getMetadataOfPlaylist from "../../ts/DataFetcher/GetMetadataOfPlaylist";
     import GetAudioFile from "../../ts/DataFetcher/GetAudioFile";
     import AudioManager from "../../ts/Player/AudioManager";
-    import { getHomePageContent, spliceHomePageContent } from "../../ts/DataFetcher/HomePageContent";
+    import { getHomePageContent, saveHomePageContent, spliceHomePageContent } from "../../ts/DataFetcher/HomePageContent";
     import Settings from "../../ts/Settings";
     import CheckOpenedResource from "../../ts/SvelteComponentsHelpers/CheckOpenedResource";
     import AddLongPressEventForHomepage from "../../ts/SvelteComponentsHelpers/AddLongPressEventForHomepage";
     import HistoryHandler from "../../ts/Player/HistoryHandler";
     import UpdateRecentlyPlayed from "../../ts/SvelteComponentsHelpers/UpdateRecentlyPlayed";
     import IconsManager from "../../ts/Icons/IconsManager";
+    import IndexedDatabase from "../../ts/Database/IndexedDatabase";
+    import CloudStorage from "../../ts/Database/CloudStorage";
     /**
      * All the elements that have been recently played
      */
@@ -147,30 +149,46 @@
             }
         }
     }
+    async function renderRecentlyPlayed() {
+        dataToShow = [];
+        let haveItemsBeenRemoved = false;
+        for (let i = 0; i < recentlyPlayedList.length; i++) {
+            console.warn(recentlyPlayedList[i]);
+            const temp = await getDisplayItem(recentlyPlayedList[i]);
+            if (!temp) { // Remove elements that are no longer available
+                recentlyPlayedList.splice(i, 1);
+                i--;
+                haveItemsBeenRemoved = true;
+            } else dataToShow.push(temp);
+        }
+        if (haveItemsBeenRemoved) {
+            localStorage.setItem("MusicPlayer-RecentlyPlayed", JSON.stringify(recentlyPlayedList));
+            IndexedDatabase.cloudHelper.driveSetWrapper({object: {id: "MusicPlayer-RecentlyPlayed", data: recentlyPlayedList as any}, request: "localStorageInfo"});
+        }
+    }
+    async function renderHomepageContent() {
+        homeTabsContent = [];
+        const homePageContent = getHomePageContent();
+        let haveItemsBeenRemoved = false;
+        for (const type of Settings.homepage.contentToShow) {
+            if (!homePageContent[type]) continue; // Skip if there are no elements inside that card
+            homeTabsContent[homeTabsContent.length] = [type, []];
+            for (let i = 0; i < homePageContent[type].length; i++) {
+                const temp = await getDisplayItem({id: homePageContent[type][i], type});
+                if (!temp) { // Remove elements that are no longer available
+                    spliceHomePageContent(type, i, 1, true);
+                    haveItemsBeenRemoved = true;
+                    i--;
+                } else homeTabsContent[homeTabsContent.length - 1][1].push(temp);
+            }
+        }
+        if (haveItemsBeenRemoved) saveHomePageContent();
+    }
     onMount(() => {
         (async () => {
-            for (let i = 0; i < recentlyPlayedList.length; i++) {
-                const temp = await getDisplayItem(recentlyPlayedList[i]);
-                if (!temp) { // Remove elements that are no longer available
-                    recentlyPlayedList.splice(i, 1);
-                    i--;
-                } else dataToShow.push(temp);
-            }
-            localStorage.setItem("MusicPlayer-RecentlyPlayed", JSON.stringify(recentlyPlayedList));
-            const homePageContent = getHomePageContent();
-            for (const type of Settings.homepage.contentToShow) {
-                if (!homePageContent[type]) continue; // Skip if there are no elements inside that card
-                homeTabsContent[homeTabsContent.length] = [type, []];
-                for (let i = 0; i < homePageContent[type].length; i++) {
-                    const temp = await getDisplayItem({id: homePageContent[type][i], type});
-                    if (!temp) { // Remove elements that are no longer available
-                        spliceHomePageContent(type, i, 1);
-                        i--;
-                    } else homeTabsContent[homeTabsContent.length - 1][1].push(temp);
-                }
-            }
+            await renderRecentlyPlayed();
+            await renderHomepageContent();
         })()
-
         HistoryHandler.backContext.deleteFromHomeTab = (data) => { // Function called when an element has been removed from the database, and so should be removed also from the webpage
             const dataIndex = dataToShow.findIndex(i => i.id === data.id && data.type === data.type);
             if (dataIndex !== -1) dataToShow.splice(dataIndex, 1);
@@ -185,9 +203,23 @@
             const tabsIndex = homeTabsContent[albumIndex][1].findIndex(i => i.id === id);
             if (tabsIndex !== -1) homeTabsContent[albumIndex][1].splice(tabsIndex, 1);
         }
+        // Now let's add the callbacks of a successful sync with Google Drive or OneDrive about the home stats
+        let callbackIndex = CloudStorage.localStorageEditCallbacks.length;
+        CloudStorage.localStorageEditCallbacks.push((name) => {
+            switch(name) {
+                case "MusicPlayer-RecentlyPlayed":
+                    recentlyPlayedList = JSON.parse(localStorage.getItem("MusicPlayer-RecentlyPlayed") ?? "[]");
+                    renderRecentlyPlayed();
+                    break;
+                case "MusicPlayer-HomePage":
+                    renderHomepageContent();
+                    break;
+            }
+        })
         return () => {
             HistoryHandler.backContext.deleteFromHomeTab = undefined;
             HistoryHandler.backContext.removeAlbumNameFromHomeTab = undefined;
+            CloudStorage.localStorageEditCallbacks.splice(callbackIndex, 1);
         }
     })
 </script>
@@ -204,7 +236,7 @@
         const prevPosition = homeTabsContent[tabContent][1].findIndex(i => i.id === recentlyPlayedItem.id);
         if (prevPosition === -1 || prevPosition === num || num === -1 || homeTabsContent[tabContent][1][prevPosition].type !== homeTabsContent[tabContent][1][num].type) return;
         homeTabsContent[tabContent][1].splice(prevPosition, 0, ...homeTabsContent[tabContent][1].splice(num, 1));
-        spliceHomePageContent(recentlyPlayedItem.type, prevPosition, 0, ...spliceHomePageContent(recentlyPlayedItem.type, num, 1));
+        spliceHomePageContent(recentlyPlayedItem.type, prevPosition, 0, false, ...spliceHomePageContent(recentlyPlayedItem.type, num, 1, true));
     }
 }} ondragstart={(e) => {
     e.dataTransfer?.setData("text/plain", recentlyPlayedItem.id);
@@ -275,7 +307,7 @@
             AudioManager.audioContext.originalQueue = [...AudioManager.audioContext.queue];
             AudioManager.audioContext.queuePosition = 0;
             AudioManager.audioContext.playlistId = null;
-            UpdateRecentlyPlayed({type: "track", id: recentlyPlayedItem.id});
+            UpdateRecentlyPlayed({type: "track", id: recentlyPlayedItem.id, date: Date.now()});
         }
     }
 }}>
@@ -288,6 +320,7 @@
             const dataIndex = dataToShow.findIndex(i => i.id === recentlyPlayedItem.id);
             if (dataIndex !== -1) dataToShow.splice(dataIndex, 1);
             localStorage.setItem("MusicPlayer-RecentlyPlayed", JSON.stringify(recentlyPlayedList));
+            IndexedDatabase.cloudHelper.driveSetWrapper({object: {id: "MusicPlayer-RecentlyPlayed", data: recentlyPlayedList as any}, request: "localStorageInfo"});
         }
     }}>
         <img use:AutoRevokeUrl style="width: 14px; height: 14px; transform: translateY(3px)" src={IconsManager.getIconObjectUrl("dismiss", "--secondtext")} alt={lang("Remove from recently played")}>
@@ -297,10 +330,12 @@
         <div>
             {#await recentlyPlayedItem.albumArt}
             {:then blob}
-            <img style="height: 100%;" use:AutoRevokeUrl
-            use:addImageToMap={`${isFromRecentlyPlayed ? "FromRecentlyPlayed" : ""}${recentlyPlayedItem.type === "playlist" ? "PlaylistImg" : recentlyPlayedItem.type === "album" ? "AArt" : "ArtistImg"}-${recentlyPlayedItem.id}`}
-            src={URL.createObjectURL(blob)}
-            alt={lang("Album art")}>
+                <div style="height: 100%;">
+                    <img style="height: 100%; aspect-ratio: 1/1; max-height: fit-content; max-width: fit-content" use:AutoRevokeUrl
+                    use:addImageToMap={`${isFromRecentlyPlayed ? "FromRecentlyPlayed" : ""}${recentlyPlayedItem.type === "playlist" ? "PlaylistImg" : recentlyPlayedItem.type === "album" ? "AArt" : "ArtistImg"}-${recentlyPlayedItem.id}`}
+                    src={URL.createObjectURL(blob)}
+                    alt={lang("Album art")}>
+                </div>
             {/await}
         </div>
         </div>

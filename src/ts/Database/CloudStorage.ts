@@ -2,6 +2,8 @@ import type { DatabaseContainer, GDriveIdContainer, metadataDB, songsStatsDB } f
 import IndexedDatabase from "./IndexedDatabase";
 import Settings from "../Settings";
 import ShowAlert from "../SvelteComponentsHelpers/ShowAlert";
+import type { RecentlyPlayed } from "../Player/PlayerInterfaces";
+import { refreshHomepageContent } from "../DataFetcher/HomePageContent";
 
 /**
  * Function to call when the showDriveLoginRequest dialog is replaced
@@ -36,6 +38,7 @@ const obj = {
      * Function to call when an element should be deleted
      */
     deleteFromCloud,
+    localStorageEditCallbacks: [] as ((name: string) => void)[],
     /**
      * Get a new token for cloud services
      * @param databases the container of all the databases
@@ -357,10 +360,46 @@ async function updateIndexedDatabase({ fileType, name, databases, fileId, req }:
             deleteFromFailedUploads(`${fileType}____${fileId}`);
             break;
         }
+        case "localStorageInfo": { // Update Local Storage entries
+            switch(name) {
+                case "MusicPlayer-RecentlyPlayed": { 
+                    // We need to merge the two recently played lists. We'll first iterate all over them so that we can get the most recent date, and then we'll recreate the Recently Played object
+                    const [current, source] = [JSON.parse(localStorage.getItem("MusicPlayer-RecentlyPlayed") ?? "[]"), await req.json()] as [RecentlyPlayed[], RecentlyPlayed[]];
+                    /**
+                     * Map that contains as a key the `type-id` of the resource, and as a value the number
+                     */
+                    const dateInfo = new Map<string, number>([]);
+                    for (const item of [...current, ...source]) dateInfo.set(`${item.type}-${item.id}`, Math.max(dateInfo.get(item.id) ?? 0, item.date ?? 0));
+                    const sortedInfo = Array.from(dateInfo).sort((a, b) => b[1] - a[1]);
+                    const outputObj: RecentlyPlayed[] = sortedInfo.map(([id, date]) => {return {id: id.substring(id.indexOf("-") + 1), date, type: id.substring(0, id.indexOf("-")) as "playlist"}});
+                    req = new Response(JSON.stringify(outputObj));
+                    break;
+                }
+                case "MusicPlayer-HomePage": {
+                    // Merge the home page entries
+                    const json = await req.json();
+                    const sourceData = {
+                        ...json, // So that, if the user has added new categories from another device, they'll be added also on this device
+                        ...(JSON.parse(localStorage.getItem("MusicPlayer-HomePage") ?? "{}"))
+                    } as {[key: string]: string[]}
+                    for (const key in sourceData) { // Let's update the existing entries by adding at the end the items that weren't added on this device
+                        if (json[key]) sourceData[key].push(...json[key].filter((i: string) => sourceData[key].indexOf(i) === -1));
+                    }
+                    req = new Response(JSON.stringify(sourceData));
+                    break;
+                }
+            }
+            const text = await req.text();
+            localStorage.setItem(name, text);
+            deleteFromFailedUploads(fileName);
+            IndexedDatabase.cloudHelper.driveSetWrapper({object: {id: name, data: JSON.parse(text)}, request: "localStorageInfo"});
+            if (name === "MusicPlayer-HomePage") refreshHomepageContent();
+            for (const item of obj.localStorageEditCallbacks) item(name);
+            break;
+        }
     }
 
 }
-
 /**
  * Downloads all the file changes, and syncs the edits that have been made when the user was offline.
  * @param databases the database container
@@ -469,6 +508,14 @@ async function finishUploadingFiles(databases: DatabaseContainer) {
                     console.warn(ex);
                 }
             }
+        }
+    }
+    for (const localStorageKey of ["MusicPlayer-RecentlyPlayed", "MusicPlayer-HomePage"]) {
+        try {
+            const data = localStorage.getItem(localStorageKey);
+            data && await IndexedDatabase.cloudHelper.driveSetWrapper({object: {id: localStorageKey, data: JSON.parse(data)}, request: "localStorageInfo"});
+        } catch(ex) {
+            console.warn(ex)
         }
     }
 }

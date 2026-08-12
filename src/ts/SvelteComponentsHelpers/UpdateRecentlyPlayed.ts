@@ -1,3 +1,4 @@
+import IndexedDatabase from "../Database/IndexedDatabase";
 import type { RecentlyPlayed } from "../Player/PlayerInterfaces";
 import Settings from "../Settings";
 
@@ -12,4 +13,5 @@ export default function UpdateRecentlyPlayed(newItem: RecentlyPlayed) {
     if (prevItems.length > Settings.homepage.maximumRecentlyPlayed) prevItems.pop();
     prevItems.unshift(newItem);
     localStorage.setItem("MusicPlayer-RecentlyPlayed", JSON.stringify(prevItems));
+    IndexedDatabase.cloudHelper.driveSetWrapper({object: {id: "MusicPlayer-RecentlyPlayed", data: prevItems as any}, request: "localStorageInfo"});
 }

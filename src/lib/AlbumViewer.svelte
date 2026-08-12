@@ -663,7 +663,8 @@
                                 AudioManager.audioContext.queueIdStart = AudioManager.audioContext.queue[0].queueId;
                                 UpdateRecentlyPlayed({ // Add the played content to the recently played tracks
                                     id: history.state.substring(history.state.indexOf("-") + 1),
-                                    type: contentType === "albumArtist" ? "albumartist" : (contentType ?? "album")
+                                    type: contentType === "albumArtist" ? "albumartist" : (contentType ?? "album"),
+                                    date: Date.now()
                                 });
                             }}
                         >

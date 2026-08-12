@@ -136,7 +136,7 @@
         AudioManager.audioContext.originalQueue = [...AudioManager.audioContext.queue];
         AudioManager.audioContext.queuePosition = 0;
         AudioManager.audioContext.playlistId = null;
-        UpdateRecentlyPlayed({type: "track", id: metadata[0].trackId});
+        UpdateRecentlyPlayed({type: "track", id: metadata[0].trackId, date: Date.now()});
     }} class="emptyButton flex hcenter gap card maxWidth" use:SelectableMusic.addToList={`Track-${trackId}`} out:fade={{duration: 1, delay: 1000}} style={`display: flex; height: auto; transition: 0.2s ease-in-out;${SelectHelper.selectedItems.has(trackId) ? " background-color: var(--cardtransparent)" : ""}`}>
         {#await handleAlbumArtCache(GetAlbumArtId({albumAuthor: albumArtist, year, albumName}), albumName)}
             

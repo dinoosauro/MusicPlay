@@ -18,6 +18,7 @@ https://github.com/user-attachments/assets/7b23e4c3-b424-4bdd-b505-3af0088f5ee0
 - View the playback stats of your tracks;
 - View the lyrics of your songs, or fetch them from the Web if they're not available;
 - Set a sleep timer;
+- Sync your library on multiple devices using Google Drive or OneDrive;
 - And more.
 
 ## Usage:
@@ -95,6 +96,8 @@ From the "Settings" button, you can change the behavior of the application in ma
 ## Privacy:
 
 This application can work completely offline. The application connects to external servers only to get the default font and to get lyrics if the user wants so.
+
+Starting from version 1.6.0, the user can sync their library to either Google Drive or OneDrive. In this case, all the application data will be stored on Google or Microsoft's servers. This option is disabled by default.
 
 ## Building:
 

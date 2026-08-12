@@ -1,11 +1,16 @@
 import CloudStorage from "./CloudStorage"
 import Settings from "../Settings"
 import type { albumArtDB, contentDataDB, folderHandleDB, GDriveIdContainer, metadataDB, playlistDB, songsStatsDB } from "./DatabaseInterfaces"
+import type { RecentlyPlayed } from "../Player/PlayerInterfaces"
 
 /**
  * The object stores used by the application
  */
 type RequestType = "contentData" | "musicMetadata" | "albumArt" | "artistImg" | "folderHandle" | "playlist" | "playlistImg" | "songStats" | "gdrive" | "onedrive"
+/**
+ * List of all the items that can be uploaded to Google Drive or OneDrive. They are the equivalent of the folders
+ */
+type RequestTypeAdvanced = RequestType | "localStorageInfo"
 
 interface GetObj {
     db: IDBDatabase,
@@ -136,11 +141,11 @@ const obj = {
         /**
          * Logic used to convert a `set` request to a cloud upload request.
          */
-        driveSetWrapper: async ({ object, request }: { object: SetInnerObject, request: RequestType }) => {
+        driveSetWrapper: async ({ object, request }: { object: SetInnerObject, request: RequestTypeAdvanced }) => {
             try {
                 if (!CloudStorage.token) throw new Error("No token available");
                 switch (request) {
-                    case "musicMetadata": case "playlist": case "songStats":
+                    case "musicMetadata": case "playlist": case "songStats": case "localStorageInfo":
                         await CloudStorage.uploadToDrive({
                             data: new Blob([JSON.stringify(object.data)]),
                             name: object.id,

@@ -1,6 +1,7 @@
+import IndexedDatabase from "../Database/IndexedDatabase";
 import type { RecentlyPlayed } from "../Player/PlayerInterfaces";
 
-const homePageContent = JSON.parse(localStorage.getItem("MusicPlayer-HomePage") ?? "{}") as HomePageContent;
+let homePageContent = JSON.parse(localStorage.getItem("MusicPlayer-HomePage") ?? "{}") as HomePageContent;
 
 interface HomePageContent {
     track?: string[],
@@ -8,6 +9,13 @@ interface HomePageContent {
     artist?: string[],
     albumartist?: string[],
     playlist?: string[]
+}
+
+/**
+ * Update the homepage content by rereading the Local Storage entries
+ */
+export function refreshHomepageContent() {
+    homePageContent = JSON.parse(localStorage.getItem("MusicPlayer-HomePage") ?? "{}");
 }
 
 /**
@@ -30,7 +38,7 @@ export function addHomePageContent({type, id}: RecentlyPlayed) {
     } else {
         homePageContent[type].push(id);
     }
-    localStorage.setItem("MusicPlayer-HomePage", JSON.stringify(homePageContent));
+    saveHomePageContent();
     return index === -1;
 }
 
@@ -39,12 +47,27 @@ export function addHomePageContent({type, id}: RecentlyPlayed) {
  * @param type which card should be spliced
  * @param start the start position where the elements should be spliced
  * @param length the number of elements to splice
+ * @param skipSave if the edit shouldn't be saved on the user's storage (cloud or not)
  * @param args elements to add in the array after the removed ones
  * @returns the elements that have been removed
  */
-export function spliceHomePageContent(type: keyof HomePageContent, start: number, length?: number, ...args: string[]) {
+export function spliceHomePageContent(type: keyof HomePageContent, start: number, length?: number, skipSave?: boolean, ...args: string[]) {
     if (!homePageContent[type]) return [];
     const spliced = homePageContent[type].splice(start, length ?? homePageContent[type].length - start, ...(args ?? []));
-    localStorage.setItem("MusicPlayer-HomePage", JSON.stringify(homePageContent));
+    if (!skipSave) saveHomePageContent();
     return spliced;
+}
+
+/**
+ * Save the homepage content, both on cloud and on device
+ */
+export function saveHomePageContent() {
+    localStorage.setItem("MusicPlayer-HomePage", JSON.stringify(homePageContent));
+    IndexedDatabase.cloudHelper.driveSetWrapper({
+        object: {
+            id: "MusicPlayer-HomePage",
+            data: homePageContent as any
+        },
+        request: "localStorageInfo"
+    });
 }

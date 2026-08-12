@@ -83,5 +83,6 @@ export interface EqualizerPreset {
 
 export interface RecentlyPlayed {
     type: "album" | "artist" | "albumartist" | "playlist" | "track",
-    id: string
+    id: string,
+    date?: number
 }
