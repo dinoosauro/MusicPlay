@@ -4,7 +4,8 @@ let obj = {
     lyrics: {
         useLrcLibByDefault: false,
         useLrcLibIfLyricsArentSynced: false,
-        informOfLrcLibUsage: true
+        informOfLrcLibUsage: true,
+        textAlignment: "default"
     },
     mediaSession: {
         actionForNextPrevButtons: "next",

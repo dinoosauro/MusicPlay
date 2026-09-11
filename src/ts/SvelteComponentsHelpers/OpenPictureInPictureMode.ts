@@ -4,7 +4,7 @@ import PopupAudioPlayer from "../../lib/AudioPlayer/PopupAudioPlayer.svelte";
 /**
  * Open the Pop-up Audio Player in Picture-in-Picture mode
  */
-export default async function OpenPictureInPictureMode({albumArtDb, metadataDb}: {albumArtDb: IDBDatabase, metadataDb: IDBDatabase}) {
+export default async function OpenPictureInPictureMode({albumArtDb, metadataDb, artistDb}: {albumArtDb: IDBDatabase, metadataDb: IDBDatabase, artistDb: IDBDatabase}) {
     if (!window.documentPictureInPicture) return;
     if (window.documentPictureInPicture.window) {
         window.documentPictureInPicture.window.close();
@@ -20,7 +20,7 @@ export default async function OpenPictureInPictureMode({albumArtDb, metadataDb}:
     }
     const div = document.createElement("div");
     const item = mount(PopupAudioPlayer, {
-        props: { fullscreenCallback: () => { }, isPiPMode: true, albumArtDb, metadataDb },
+        props: { fullscreenCallback: () => { }, isPiPMode: true, albumArtDb, metadataDb, artistDb },
         target: div
     })
     doc?.document.body.append(div);

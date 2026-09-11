@@ -489,7 +489,18 @@ const availableTranslations = new Map<string, TranslationProps>([
     [`Now, click on the "Create" button, and copy the Client ID and the Client Secret below`, {it: "Ora, clicca sul pulsante \"Crea\", e copia il Client ID ed il Client Secret qui in basso"}],
     [`Last step: go on the "Audience" page (always on the left menu), and add the email address of your Google account in the "Test users" section`, {it: "Ultimo passaggio: vai sulla pagina \"Pubblico\" (sempre nel menù a sinistra), ed aggiungi l'email del tuo account nella sezione \"Utenti di prova\""}],
     ["To go back to the easy mode, leave these two fields blank", {it: "Per ritornare alla modalità semplice, lascia questi due campi vuoit"}],
-    ["Connect to Google Drive", {it: "Connetti a Google Drive"}]
+    ["Connect to Google Drive", {it: "Connetti a Google Drive"}],
+    ["Change the name of artist number", {it: "Cambia il nome dell'artista numero"}],
+    ["Who is singing this", {it: "Chi sta cantando questa"}],
+    ["line", {it: "linea"}],
+    ["word", {it: "parola"}],
+    ["Apply", {it: "Applica"}],
+    ["Lyrics with multiple artists", {it: "Testi con più artisti"}],
+    ["You can specify which artist is singing which line by long-pressing a line in the Lyrics view. You'll then see the artist name and image.", {it: "Puoi specificare quale artista sta cantando una parte della canzone tenendo premuto su una linea nella vista dei testi. Vedrai poi il nome dell'artista e la sua immagine."}],
+    ["Force text alignment", {it: "Forza l'allineamento del testo"}],
+    ["Left", {it: "Sinistra"}],
+    ["Center", {it: "Centro"}],
+    ["Right", {it: "Destra"}]
 ]);
 
 /**

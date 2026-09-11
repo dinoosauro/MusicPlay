@@ -57,6 +57,7 @@ export interface metadataDB {
     title: string,
     embeddedLyrics: string,
     syncedLyrics: syncedLyricsObj[],
+    lyricsAuthorNames?: string[]
     titleSort?: string,
     composer: string | undefined,
     composerSort: string | undefined,

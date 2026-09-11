@@ -153,7 +153,6 @@
         dataToShow = [];
         let haveItemsBeenRemoved = false;
         for (let i = 0; i < recentlyPlayedList.length; i++) {
-            console.warn(recentlyPlayedList[i]);
             const temp = await getDisplayItem(recentlyPlayedList[i]);
             if (!temp) { // Remove elements that are no longer available
                 recentlyPlayedList.splice(i, 1);

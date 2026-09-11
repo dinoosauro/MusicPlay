@@ -224,17 +224,33 @@
         </ShowSettingContent>
     </Card><br>
     <Card secondCard={true}>
-        <ShowSettingContent title={lang("Lyrics integration")} suggestedState="lyrics" currentState={openedContent} {updateState}>
-            <p>{lang("The application can automatically fetch missing lyrics from")} <a href="https://lrclib.net" target="_blank">LRCLib</a>. {lang("The application will only share the necessary metadata to identify the currently-playing song. If you enable this, you're also subject to LRCLib's Terms of Service")}.</p>
-            <label class="flex hcenter gap">
-                <input type="checkbox" bind:checked={Settings.lyrics.useLrcLibByDefault}>{lang("Automatically fetch lyrics if missing")}
-            </label><br>
-            <label class="flex hcenter gap">
-                <input type="checkbox" bind:checked={Settings.lyrics.useLrcLibIfLyricsArentSynced}>{lang("Automatically fetch lyrics if the uploaded ones aren't synced")}
-            </label><br>
-            <label class="flex hcenter gap">
-                <input type="checkbox" bind:checked={Settings.lyrics.informOfLrcLibUsage}>{lang("Show a pop-up every time a request is made to LRCLib")}
-            </label>
+        <ShowSettingContent title={lang("Lyrics")} suggestedState="lyrics" currentState={openedContent} {updateState}>
+            <Card>
+                <h4>{lang("Lyrics with multiple artists")}</h4>
+                <p>{lang("You can specify which artist is singing which line by long-pressing a line in the Lyrics view. You'll then see the artist name and image.")}</p>
+                <label class="flex hcenter gap">
+                    {lang("Force text alignment")}:
+                    <select style="background-color: var(--secondcard);" bind:value={Settings.lyrics.textAlignment}>
+                        <option value="default">{lang("Default")}</option>
+                        <option value="left">{lang("Left")}</option>
+                        <option value="center">{lang("Center")}</option>
+                        <option value="right">{lang("Right")}</option>
+                    </select>
+                </label>
+            </Card><br>
+            <Card>
+                <h4>{lang("Lyrics integration")}</h4>
+                <p>{lang("The application can automatically fetch missing lyrics from")} <a href="https://lrclib.net" target="_blank">LRCLib</a>. {lang("The application will only share the necessary metadata to identify the currently-playing song. If you enable this, you're also subject to LRCLib's Terms of Service")}.</p>
+                <label class="flex hcenter gap">
+                    <input class="fromFirstCard" type="checkbox" bind:checked={Settings.lyrics.useLrcLibByDefault}>{lang("Automatically fetch lyrics if missing")}
+                </label><br>
+                <label class="flex hcenter gap">
+                    <input class="fromFirstCard" type="checkbox" bind:checked={Settings.lyrics.useLrcLibIfLyricsArentSynced}>{lang("Automatically fetch lyrics if the uploaded ones aren't synced")}
+                </label><br>
+                <label class="flex hcenter gap">
+                    <input class="fromFirstCard" type="checkbox" bind:checked={Settings.lyrics.informOfLrcLibUsage}>{lang("Show a pop-up every time a request is made to LRCLib")}
+                </label>
+            </Card>
         </ShowSettingContent>
     </Card><br>
     <Card secondCard={true}>
@@ -379,11 +395,11 @@
                 {/each}
             </div><br>
             <label class="flex hcenter gap">
-                <input type="checkbox" bind:checked={Settings.homepage.scrollRecentlyPlayed}>
+                <input class="fromFirstCard" type="checkbox" bind:checked={Settings.homepage.scrollRecentlyPlayed}>
                 {lang("Put the recently played elements on one line")}
             </label><br>
             <label class="flex hcenter gap">
-                <input type="checkbox" bind:checked={Settings.homepage.scrollOtherContent}>
+                <input class="fromFirstCard" type="checkbox" bind:checked={Settings.homepage.scrollOtherContent}>
                 {lang("Put the displayed cards on the homepage on one line")}
             </label><br>
             <label class="flex hcenter gap">

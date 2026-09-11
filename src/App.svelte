@@ -740,7 +740,7 @@
           style="opacity: 1;"
           bind:this={audioPlaybackController}
         >
-          <AudioPlayer metadataDb={databases.metadataDb} albumArtDb={databases.albumArtDb} fullscreenCallback={(img) => {
+          <AudioPlayer artistDb={databases.artistImgDb} metadataDb={databases.metadataDb} albumArtDb={databases.albumArtDb} fullscreenCallback={(img) => {
             showFullscreenPlayer = img;
             PopupPlayerAnimationHandler.disappearElement(audioPlaybackController);
           }}></AudioPlayer>
@@ -797,7 +797,7 @@
           <Convert closeFn={() => (convertDialog = false)} {databases} data={convertDialog}></Convert>
         {/if}
         {#if showFullscreenPlayer}
-          <FullscreenAudioPlayer metadataDb={databases.metadataDb} albumArtDb={databases.albumArtDb} albumArt={`${showFullscreenPlayer.getAttribute("data-nextsrc") || showFullscreenPlayer.src}`} {skipHistoryUrlForFullscreenView} imageTransitionCallback={async (img, elements) => {
+          <FullscreenAudioPlayer artistImgDb={databases.artistImgDb} metadataDb={databases.metadataDb} albumArtDb={databases.albumArtDb} albumArt={`${showFullscreenPlayer.getAttribute("data-nextsrc") || showFullscreenPlayer.src}`} {skipHistoryUrlForFullscreenView} imageTransitionCallback={async (img, elements) => {
             await AnimationHandler.imageAnimationHandler({
                   sourceImage: showFullscreenPlayer as HTMLImageElement,
                   outputImage: img,

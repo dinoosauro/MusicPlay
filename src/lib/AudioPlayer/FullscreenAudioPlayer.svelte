@@ -25,7 +25,7 @@
     import inputRangeStyle from "../../ts/SvelteComponentsHelpers/InputTypeRangeStyle";
     import ShowAlert from "../../ts/SvelteComponentsHelpers/ShowAlert";
 
-    const { albumArt, imageTransitionCallback, skipHistoryUrlForFullscreenView, albumArtDb, metadataDb }: { 
+    const { albumArt, imageTransitionCallback, skipHistoryUrlForFullscreenView, albumArtDb, metadataDb, artistImgDb }: { 
         /**
          * The URL of the album art that should be displayed in full screen.
          */
@@ -47,7 +47,11 @@
         /**
          * The database where the componenet can fetch new metadata
          */
-        metadataDb: IDBDatabase 
+        metadataDb: IDBDatabase,
+        /**
+         * The database where the images of the artists are saved
+         */
+        artistImgDb: IDBDatabase
     } = $props();
     /**
      * The visibile album art (not the background one)
@@ -534,7 +538,7 @@
                     {#if availableLyrics && showLyricsPlayer}
                     <div>
                         {#key currentLyricsKey}
-                            <LyricsPlayer lyrics={currentLyrics}></LyricsPlayer>
+                            <LyricsPlayer artistDb={artistImgDb} {metadataDb} lyrics={currentLyrics}></LyricsPlayer>
                         {/key}
                     </div>
                     {:else}

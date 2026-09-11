@@ -69,7 +69,7 @@
      * This is currently used so that the user can change the playback value
      */
     let blockProgressUpdate = false;
-    let {fullscreenCallback, isPiPMode, albumArtDb, metadataDb}: {
+    let {fullscreenCallback, isPiPMode, albumArtDb, metadataDb, artistDb}: {
         /**
          * The function that'll be called when the user wants to go in fullscreen mode
          * @param img the album art element, used for the transition
@@ -88,7 +88,12 @@
          * The database used to fetch the metadata. 
          * This is used only in Picture-in-Picture mode so that the application can save the lyrics fetched from LRCLib.
          */
-        metadataDb: IDBDatabase
+        metadataDb: IDBDatabase,
+        /**
+         * The databases used to fetch the images of the artist.
+         * This is used only in Picture-in-Picture mode for the lyrics mode.
+         */
+        artistDb: IDBDatabase
     } = $props();
     $effect(() => {
         // Let's tell the user they can go in fullscreen mode by clicking the image
@@ -299,7 +304,7 @@
     if ((e.target as HTMLElement).tagName === "DIV") fullscreenCallback(img);
 }} bind:this={main}>
     {#if !isPiPMode && isAudioBeingPlayed && typeof window.documentPictureInPicture?.requestWindow === "function"}
-        <button style="position: absolute; right: 15px; top: 15px; width: auto; height: auto;" class="emptyButton" onclick={() => OpenPictureInPictureMode({albumArtDb, metadataDb})}>
+        <button style="position: absolute; right: 15px; top: 15px; width: auto; height: auto;" class="emptyButton" onclick={() => OpenPictureInPictureMode({albumArtDb, metadataDb, artistDb})}>
             <img class="icon" use:AutoRevokeUrl src={Icons.getIconObjectUrl("pictureinpicture")} alt={lang("Enable/disable Picture-in-Picture mode")}>
         </button>
     {/if}
@@ -389,7 +394,7 @@
             }} title={lang("Back button")}>
                 <img use:AutoRevokeUrl src={Icons.getIconObjectUrl("left")} class="icon" style="width: 24px; height: 24px; padding: 5px" alt={lang("Back button")}>
             </button>
-            <LyricsPlayer lyrics={currentLyrics} customHeight="calc(100vh - 20px)"></LyricsPlayer>
+            <LyricsPlayer {artistDb} {metadataDb} lyrics={currentLyrics} customHeight="calc(100vh - 20px)"></LyricsPlayer>
         </div>
     {/if}
 {/key}
